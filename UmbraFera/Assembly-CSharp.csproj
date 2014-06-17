@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+	<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+	<Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+	<ProductVersion>10.0.20506</ProductVersion>
+	<SchemaVersion>2.0</SchemaVersion>
+	<ProjectGuid>{99414913-D19B-767E-EFB4-BE6FA3AF5C19}</ProjectGuid>
+	<OutputType>Library</OutputType>
+	<AppDesignerFolder>Properties</AppDesignerFolder>
+	<RootNamespace></RootNamespace>
+	<AssemblyName>Assembly-CSharp</AssemblyName>
+	<TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+	<FileAlignment>512</FileAlignment>
+	<BaseDirectory>Assets</BaseDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+	<DebugSymbols>true</DebugSymbols>
+	<DebugType>full</DebugType>
+	<Optimize>false</Optimize>
+	<OutputPath>Temp\bin\Debug\</OutputPath>
+	<DefineConstants>DEBUG;TRACE;UNITY_4_5_0;UNITY_4_5;UNITY_STANDALONE_WIN;ENABLE_MICROPHONE;ENABLE_TEXTUREID_MAP;ENABLE_UNITYEVENTS;ENABLE_NEW_HIERARCHY ;ENABLE_AUDIO_FMOD;UNITY_STANDALONE;ENABLE_MONO;ENABLE_TERRAIN;ENABLE_SUBSTANCE;ENABLE_GENERICS;INCLUDE_WP8SUPPORT;ENABLE_MOVIES;ENABLE_WWW;ENABLE_IMAGEEFFECTS;ENABLE_WEBCAM;INCLUDE_METROSUPPORT;RENDER_SOFTWARE_CURSOR;ENABLE_NETWORK;ENABLE_PHYSICS;ENABLE_CACHING;ENABLE_CLOTH;ENABLE_2D_PHYSICS;ENABLE_SHADOWS;ENABLE_AUDIO;ENABLE_NAVMESH_CARVING;ENABLE_DUCK_TYPING;ENABLE_SINGLE_INSTANCE_BUILD_SETTING;ENABLE_PROFILER;UNITY_EDITOR;UNITY_EDITOR_WIN;UNITY_PRO_LICENSE</DefineConstants>
+	<ErrorReport>prompt</ErrorReport>
+	<WarningLevel>4</WarningLevel>
+	<NoWarn>0169</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+	<DebugType>pdbonly</DebugType>
+	<Optimize>true</Optimize>
+	<OutputPath>Temp\bin\Release\</OutputPath>
+	<DefineConstants>TRACE</DefineConstants>
+	<ErrorReport>prompt</ErrorReport>
+	<WarningLevel>4</WarningLevel>
+	<NoWarn>0169</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+	<Reference Include="System" />
+    <Reference Include="System.XML" />
+	<Reference Include="System.Core" />
+	<Reference Include="System.Xml.Linq" />
+	<Reference Include="UnityEngine">
+	  <HintPath>C:/Program Files (x86)/Unity/Editor/Data/Managed/UnityEngine.dll</HintPath>
+	</Reference>
+	<Reference Include="UnityEditor">
+	  <HintPath>C:/Program Files (x86)/Unity/Editor/Data/Managed/UnityEditor.dll</HintPath>
+	</Reference>
+  </ItemGroup>
+  <ItemGroup>
+     <Compile Include="Assets\GreyBoxPrototype\Orc Warrior\Scripts\MouseController.cs" />
+     <Compile Include="Assets\GreyBoxPrototype\Scripts\Movement.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\BBValues.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\Blackboard.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\Data.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\BoolData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\ColorData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\ComponentData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\FloatData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\GameObjectData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\GameObjectListData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\GameObjectListEditor.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\IntData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\StringData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\SystemObjectData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\Vector2Data.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Blackboard\DataTypes\VectorData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Graph\ConditionalConnection.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Graph\ConnectionBase.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Graph\ITaskDefaults.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Graph\NodeBase.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Graph\NodeGraphContainer.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Other\AgentUtilities.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Other\EditorUtils.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Other\EventDebugger.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Other\EventHandler.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Other\GraphOwner.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Other\MonoManager.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Tasks\Actions\ActionList.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Tasks\Actions\ActionTask.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Tasks\Conditions\ConditionTask.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Tasks\Conditions\ConditionsList.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Core\Tasks\Task.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTActionNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTConditionNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTContainer.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTNestedFSMNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTNestedTreeNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTNodeBase.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTParallelNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTProbabilitySelector.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTSelectorNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BTSequencerNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\BehaviourTreeOwner.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\AccessorDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\BTDecoratorNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\DebugDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\InterruptDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\IterateListDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\LimiterDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\RemapStatesDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\RepeatDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\BehaviourTree\Decorators\SetterDecorator.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\DLGActionNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\DLGConditionNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\DLGMultipleChoice.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\DLGNestedDLG.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\DLGNodeBase.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\DLGStatementNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\DialogueTreeContainer.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\Other\DialogueActor.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\Other\DialogueEventEnums.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\DialogueTree\Other\DialogueMessages.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMAnyStateLink.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMConcurrentState.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMConnection.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMContainer.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMNestedBTNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMNestedFSMNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMNodeBase.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMOwner.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\FSM\FSMStateNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\MySystem\MySystem.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Systems\MySystem\MySystemNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\AddComponent.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\AddToGameObjectList.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ComposeVector.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\DebugAction.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\DecomposeVector.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\DestroyGameObject.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\EmptyAction.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ExecuteExpression.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ExecuteFunction.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetCloserGameObject.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetComponentFromAgent.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetGameObjectPosition.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetGameObjectWithName.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetInputAxis.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetMousePosition.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetMouseScrollDelta.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetObjectsOfTag.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\GetProperty.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenActions.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenLook.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenMove.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenMoveAmount.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenPunch.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenRotate.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenRotateAmount.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenScale.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenScaleAmount.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\ITweenStop.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\InstantiateGameObject.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\LookAt.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MecanimIKActions.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MecanimPlayAnimation.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MecanimSetBool.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MecanimSetFloat.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MecanimSetLayerWeight.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MecanimSetTrigger.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MonoAction.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MoveToFromList.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MoveToLocation.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\MoveToPosition.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\PlayAnimationSimple.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\PlayAudio.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\RunForever.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SendEvent.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SendUnityMessage.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetBooleanData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetComponentData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetFloatData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetFloatRandom.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetGameObjectData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetGameObjectListData.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetObjectVisibility.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetString.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\SetVector3Data.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Actions\Wait.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckBoolean.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckButtonInput.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckCSharpEvent.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckCollision.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckCollision2D.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckComponent.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckDistance.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckEvent.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckExpression.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckFloat.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckFunction.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckGameObject.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckGameObjectList.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckInFront.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckKeyboardInput.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckLOS.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckMouse.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckMouseClick.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckMouseInput.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckString.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckTrigger.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\CheckTrigger2D.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\EmptyCondition.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\GameObjectIsNull.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\MecanimCheckBool.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\MecanimCheckFloat.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\MecanimCheckInt.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\MecanimIsInTransition.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\Probability.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\Timeout.cs" />
+     <Compile Include="Assets\NodeCanvas\Scripts\Tasks\Conditions\TrueCondition.cs" />
+     <Compile Include="Assets\NodeCanvas\ShowcaseExamples\ClickToMove.cs" />
+     <Compile Include="Assets\NodeCanvas\ShowcaseExamples\ClickToStartDialogue.cs" />
+     <Compile Include="Assets\NodeCanvas\ShowcaseExamples\DialogueGUI\Scripts\DialogueChoiceGUI.cs" />
+     <Compile Include="Assets\NodeCanvas\ShowcaseExamples\DialogueGUI\Scripts\DialogueSubtitlesGUI.cs" />
+     <Compile Include="Assets\NodeCanvas\iTween\iTween.cs" />
+     <None Include="Assets\Standard Assets\Projectors\Guidelines.txt" />
+     <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-Basic.shader" />
+     <None Include="Assets\Standard Assets\Projectors\Sources\Shaders\Projector Multiply.shader" />
+     <None Include="Assets\NodeCanvas\iTween\ReadMe!\ReadMe!.txt" />
+     <None Include="Assets\Standard Assets\Particles\Sources\Shaders\Particle Alpha Blend (Queue +100).shader" />
+     <None Include="Assets\Standard Assets\Skyboxes\_skybox info.txt" />
+     <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-BasicOutline.shader" />
+     <None Include="Assets\Standard Assets\Projectors\Sources\Shaders\Projector Light.shader" />
+     <None Include="Assets\Standard Assets\Water (Basic)\Sources\Shaders\FX-Water Simple.shader" />
+     <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-LightedOutline.shader" />
+     <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-Lighted.shader" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Assembly-CSharp-firstpass.csproj">
+      <Project>{A96A0BBD-0BE8-0D06-B3CC-39523706E3EE}</Project>      <Name>Assembly-CSharp-firstpass</Name>    </ProjectReference>
+    <ProjectReference Include="Assembly-UnityScript-firstpass.unityproj">
+      <Project>{3477C8F2-9741-64E1-607D-779136728561}</Project>      <Name>Assembly-UnityScript-firstpass</Name>    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+	   Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  
+</Project>
