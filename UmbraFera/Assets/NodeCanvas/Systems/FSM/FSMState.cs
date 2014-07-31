@@ -8,7 +8,7 @@ using System.Collections;
 namespace NodeCanvas.StateMachines{
 
 	public interface IState{
-		string Name{get;}
+		string name{get;}
 		float elapsedTime{get;}
 		FSM FSM{get;}
 	}
@@ -16,13 +16,7 @@ namespace NodeCanvas.StateMachines{
 	///The base class for all FSM system nodes. It basicaly 'converts' methods to more friendly FSM like ones.
 	abstract public class FSMState : Node, IState{
 
-		[SerializeField] [HideInInspector]
-		private string stateName;
-		public float elapsedTime{get;set;}
-
-		public string Name{
-			get {return nodeName;}
-		}
+		public float elapsedTime{get;private set;}
 
 		public override int maxInConnections{
 			get{return -1;}
@@ -31,6 +25,7 @@ namespace NodeCanvas.StateMachines{
 		public override int maxOutConnections{
 			get{return -1;}
 		}
+
 		sealed public override System.Type outConnectionType{
 			get{return typeof(FSMConnection);}
 		}
@@ -132,10 +127,8 @@ namespace NodeCanvas.StateMachines{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 
-		private static Port clickedPort;
-		private Connection picked;
-		[SerializeField]
-		private bool updated;
+		private static Port clickedPort{get;set;}
+		private Connection picked{get;set;}
 
 		class Port{
 
@@ -148,19 +141,6 @@ namespace NodeCanvas.StateMachines{
 			}
 		}
 
-		protected override void Reset(){
-			enabled = false;
-			updated = true;
-		}
-
-		protected override void OnValidate(){
-			enabled = false;
-			if (!updated){
-				updated = true;
-				nodeName = stateName;
-			}
-		}
-
 		protected override void OnCreate(){
 			enabled = false;
 		}
@@ -170,8 +150,10 @@ namespace NodeCanvas.StateMachines{
 			var e = Event.current;
 
 			if (maxOutConnections == 0){
-				if (e.type == EventType.MouseUp && ID == graph.allNodes.Count)
+				if (e.type == EventType.MouseUp && ID == graph.allNodes.Count){
 					clickedPort = null;
+					//e.Use();
+				}
 				return;
 			}
 
@@ -179,32 +161,37 @@ namespace NodeCanvas.StateMachines{
 			var portRectRight = new Rect(0,0,20,20);
 			var portRectBottom = new Rect(0,0,20,20);
 
-			portRectLeft.center = new Vector2(nodeRect.x - 12, nodeRect.yMax - 10);
-			portRectRight.center = new Vector2(nodeRect.xMax + 12, nodeRect.yMax - 10);
-			portRectBottom.center = new Vector2(nodeRect.center.x, nodeRect.yMax + 12);
-			GUI.color = new Color(0,0,0,0.5f);
-			GUI.Box(portRectLeft, "", "nodeInputRight");
-			GUI.Box(portRectRight, "", "nodeInputLeft");
-			
-			if (maxInConnections == 0)
-				GUI.Box(portRectBottom, "", "nodeInputTop");
-
-			GUI.color = Color.white;
+			portRectLeft.center = new Vector2(nodeRect.x - 11, nodeRect.yMax - 10);
+			portRectRight.center = new Vector2(nodeRect.xMax + 11, nodeRect.yMax - 10);
+			portRectBottom.center = new Vector2(nodeRect.center.x, nodeRect.yMax + 11);
 
 			EditorGUIUtility.AddCursorRect(portRectLeft, MouseCursor.ArrowPlus);
 			EditorGUIUtility.AddCursorRect(portRectRight, MouseCursor.ArrowPlus);
 			EditorGUIUtility.AddCursorRect(portRectBottom, MouseCursor.ArrowPlus);
 
+			GUI.color = new Color(1,1,1,0.3f);
+			GUI.Box(portRectLeft, "", "arrowLeft");
+			GUI.Box(portRectRight, "", "arrowRight");
+			if (maxInConnections == 0)
+				GUI.Box(portRectBottom, "", "arrowBottom");
+			GUI.color = Color.white;
+
 			if (e.button == 0 && e.type == EventType.MouseDown){
 				
-				if (portRectLeft.Contains(e.mousePosition))
+				if (portRectLeft.Contains(e.mousePosition)){
 					clickedPort = new Port(this, portRectLeft.center);
+					e.Use();
+				}
 				
-				if (portRectRight.Contains(e.mousePosition))
+				if (portRectRight.Contains(e.mousePosition)){
 					clickedPort = new Port(this, portRectRight.center);
+					e.Use();
+				}
 
-				if (maxInConnections == 0 && portRectBottom.Contains(e.mousePosition))
+				if (maxInConnections == 0 && portRectBottom.Contains(e.mousePosition)){
 					clickedPort = new Port(this, portRectBottom.center);
+					e.Use();
+				}
 			}
 
 			if (clickedPort != null && clickedPort.parent == this)
@@ -214,26 +201,31 @@ namespace NodeCanvas.StateMachines{
 				
 				var port = clickedPort;
 
-				if (ID == graph.allNodes.Count)
+				if (ID == graph.allNodes.Count){
 					clickedPort = null;
+					e.Use();
+				}
 
 				if (nodeRect.Contains(e.mousePosition)){
-					
 					foreach(FSMConnection connection in inConnections){
 						if (connection.sourceNode == port.parent){
 							Debug.LogWarning("State is already connected to target state. Consider using ConditionList on the existing transition if you want to check multiple conditions");
+							clickedPort = null;
+							e.Use();
 							return;
 						}
 					}
-
 					graph.ConnectNode(port.parent, this);
+					clickedPort = null;
+					e.Use();
 				}
 			}
 
 			for (int i = 0; i < outConnections.Count; i++){
+
 				FSMConnection connection = outConnections[i] as FSMConnection;
-				Vector2 targetPos = (connection.targetNode as FSMState).GetConnectedInPortPosition(connection);
-				Vector2 sourcePos = Vector2.zero;
+				var targetPos = (connection.targetNode as FSMState).GetConnectedInPortPosition(connection);
+				var sourcePos = Vector2.zero;
 
 				if (nodeRect.center.x <= targetPos.x)
 					sourcePos = portRectRight.center;
@@ -280,10 +272,8 @@ namespace NodeCanvas.StateMachines{
 				GUILayout.Label("", GUILayout.Height(1));
 			}
 
-			var e = Event.current;
 			if (Application.isPlaying){
-				GUILayout.Label(elapsedTime.ToString());
-				if (allowAsPrime && e.type == EventType.MouseDown && e.alt)
+				if (allowAsPrime && Event.current.type == EventType.MouseDown && Event.current.alt)
 					FSM.EnterState(this);
 			} 
 		}

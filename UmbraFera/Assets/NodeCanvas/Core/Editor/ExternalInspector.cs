@@ -43,11 +43,6 @@ namespace NodeCanvasEditor{
 			if (typeof(Node).IsAssignableFrom(currentSelection.GetType()) ){
 				var node = currentSelection as Node;
 				Title(node.nodeName );
-				if (Graph.showNodeInfo){
-					GUI.backgroundColor = new Color(0.8f,0.8f,1);
-					EditorGUILayout.HelpBox(node.nodeDescription, MessageType.None);
-					GUI.backgroundColor = Color.white;
-				}
 				node.ShowNodeInspectorGUI();
 			}
 			
@@ -62,16 +57,15 @@ namespace NodeCanvasEditor{
 		void Title(string text){
 
 			GUILayout.Space(5);
-			GUILayout.BeginHorizontal();
+			GUILayout.BeginHorizontal("box", GUILayout.Height(28));
 			GUILayout.FlexibleSpace();
 			GUILayout.Label("<b><size=16>" + text + "</size></b>");
 			GUILayout.FlexibleSpace();
 			GUILayout.EndHorizontal();
-			GUILayout.Space(5);
-			EditorUtils.BoldSeparator();
+			//EditorUtils.BoldSeparator();
 		}
 
-	    [MenuItem("NC/External Inspector")]
+	    [MenuItem("Window/NodeCanvas/External Inspector")]
 	    public static void OpenWindow() {
 
 	        var window = GetWindow(typeof(ExternalInspector)) as ExternalInspector;

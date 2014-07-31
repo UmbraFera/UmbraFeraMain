@@ -7,6 +7,27 @@ using System.Linq;
 
 namespace NodeCanvas.Variables{
 
+	///Marks the BBVariable possible to only pick values from blackboard
+	[AttributeUsage(AttributeTargets.Field)]
+	class BlackboardOnlyAttribute : Attribute{
+	}
+
+	///Defines a derived type for an IMultiCastable BBVariable
+	[AttributeUsage(AttributeTargets.Field)]
+	class VariableType : Attribute{
+
+		public System.Type type;
+
+		public VariableType(System.Type type){
+			this.type = type;
+		}
+	}
+
+	///Denotes that the BBVariable can be set to other derived types of the original contained.
+	interface IMultiCastable{
+		System.Type type {get;set;}
+	}
+
 	///Base class for Variables that allow linking to a Blackboard variable or specifying one directly.
 	[Serializable]
 	abstract public class BBVariable{
@@ -33,23 +54,23 @@ namespace NodeCanvas.Variables{
 		///Set the blackboard provided for all BBVariable fields on the object provided
 		public static void SetBBFields(Blackboard bb, object o){
 
-			CheckNullBBFields(o);
+			InitBBFields(o);
 
-			foreach (FieldInfo field in o.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)){
+			foreach (FieldInfo field in o.GetType().NCGetFields()){
 
-				if (typeof(IList).IsAssignableFrom(field.FieldType)){
-					
+				if (typeof(IList).NCIsAssignableFrom(field.FieldType) && !field.FieldType.IsArray){
+
 					var list = field.GetValue(o) as IList;
 					if (list == null)
 						continue;
 
-					if (typeof(BBVariable).IsAssignableFrom(field.FieldType.GetGenericArguments()[0])){
+                    if (typeof(BBVariable).NCIsAssignableFrom(field.FieldType.NCGetGenericArguments()[0])){
 						foreach(BBVariable bbVar in list)
 							bbVar.bb = bb;
 					}
 				}
 
-				if (typeof(BBVariable).IsAssignableFrom(field.FieldType))
+				if (typeof(BBVariable).NCIsAssignableFrom(field.FieldType))
 					(field.GetValue(o) as BBVariable).bb = bb;
 
 				if (typeof(BBVariableSet) == field.FieldType)
@@ -57,11 +78,23 @@ namespace NodeCanvas.Variables{
 			}
 		}
 
-		///Check for null bb fields and init them if null on provided object
-		public static void CheckNullBBFields(object o){
-			foreach (FieldInfo field in o.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)){
-				if (typeof(BBVariable).IsAssignableFrom(field.FieldType) && field.GetValue(o) == null)
-					field.SetValue(o, Activator.CreateInstance(field.FieldType));
+		///Check for null bb fields and init them if null on provided object. Also make use of variable attributes
+		public static void InitBBFields(object o){
+			
+			foreach (FieldInfo field in o.GetType().NCGetFields()){
+
+				if (typeof(BBVariable).NCIsAssignableFrom(field.FieldType)){
+					if (field.GetValue(o) == null)
+						field.SetValue(o, Activator.CreateInstance(field.FieldType));
+					if (field.GetCustomAttributes(typeof(BlackboardOnlyAttribute), true ).FirstOrDefault() != null)
+						(field.GetValue(o) as BBVariable).blackboardOnly = true;
+				}
+
+				if (typeof(IMultiCastable).NCIsAssignableFrom(field.FieldType)){
+					var typeAtt = field.GetCustomAttributes(typeof(VariableType), true ).FirstOrDefault() as VariableType;
+					if (typeAtt != null)
+						(field.GetValue(o) as IMultiCastable).type = typeAtt.type;
+				}
 			}
 		}
 
@@ -144,6 +177,11 @@ namespace NodeCanvas.Variables{
 			set { _useBlackboard = value; if (value == false) dataName = null; }
 		}
 
+		///Has the user selected |NONE| in the dropdown?
+		public bool isNone{
+			get {return useBlackboard && string.IsNullOrEmpty(dataName);}
+		}
+
 		///Is the final value null?
 		virtual public bool isNull{
 			get {return objectValue == null || objectValue.Equals(null);}
@@ -154,7 +192,7 @@ namespace NodeCanvas.Variables{
 			get
 			{
 				if (_getMethod == null)
-					_getMethod = this.GetType().GetMethod("get_value");
+					_getMethod = this.GetType().NCGetMethod("get_value");
 				return _getMethod.ReturnType;
 			}
 		}
@@ -164,19 +202,19 @@ namespace NodeCanvas.Variables{
 			get
 			{
 				if (_getMethod == null)
-					_getMethod = this.GetType().GetMethod("get_value");
+					_getMethod = this.GetType().NCGetMethod("get_value");
 				return _getMethod.Invoke(this, null);
 			}
 			set
 			{
 				if (_setMethod == null)
-					_setMethod = this.GetType().GetMethod("set_value");
+					_setMethod = this.GetType().NCGetMethod("set_value");
 				_setMethod.Invoke(this, new object[]{value});
 			}
 		}
 
 		public override string ToString(){
-			UnityEngine.Object uObject = typeof(UnityEngine.Object).IsAssignableFrom(varType)? (UnityEngine.Object)objectValue : null;
+			UnityEngine.Object uObject = typeof(UnityEngine.Object).NCIsAssignableFrom(varType)? (UnityEngine.Object)objectValue : null;
 			return "'<b>" + ( useBlackboard? "$" + dataName : (isNull? "NULL" : (uObject? uObject.name : objectValue.ToString() ) ) ) + "</b>'";
 		}
 
@@ -227,87 +265,87 @@ namespace NodeCanvas.Variables{
 		private object value{get;set;}
 	}
 
+
+	///The actual type to derive from to create almost any custom variable.
 	[Serializable]
-	public class BBBool : BBVariable{
-		
+	abstract public class BBVariable<T> : BBVariable{
 		[SerializeField]
-		private bool _value;
-		public bool value{
-			get {return useBlackboard? Read<bool>() : _value ;}
+		protected T _value;
+		public T value{
+			get {return useBlackboard? Read<T>() : _value;}
 			set {if (useBlackboard) Write(value); else _value = value;}
 		}
 	}
 
+	///Derive this for List<T> types
 	[Serializable]
-	public class BBFloat : BBVariable{
-
-		[SerializeField]
-		private float _value;
-		public float value{
-			get {return useBlackboard? Read<float>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
+	abstract public class BBListVariable<T> : BBVariable<List<T>>{
+		public override string ToString(){
+			return useBlackboard? base.ToString() : string.Format("<b>List</b>({0})", value != null? value.Count.ToString() : "0");
 		}
 	}
 
-	[Serializable]
-	public class BBInt : BBVariable{
-
-		[SerializeField]
-		private int _value;
-		public int value{
-			get {return useBlackboard? Read<int>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
-	}
 
 	[Serializable]
-	public class BBVector : BBVariable{
-
-		[SerializeField]
-		private Vector3 _value= Vector3.zero;
-		public Vector3 value{
-			get {return useBlackboard? Read<Vector3>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
-	}
-
+	public class BBBool : BBVariable<bool>{}
 	[Serializable]
-	public class BBVector2 : BBVariable{
-
-		[SerializeField]
-		private Vector2 _value= Vector2.zero;
-		public Vector2 value{
-			get {return useBlackboard? Read<Vector2>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
-	}
-
+	public class BBFloat : BBVariable<float>{}
 	[Serializable]
-	public class BBColor : BBVariable{
-
-		[SerializeField]
-		private Color _value = Color.white;
-		public Color value{
-			get {return useBlackboard? Read<Color>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
-	}
-
+	public class BBInt : BBVariable<int>{}
 	[Serializable]
-	public class BBString : BBVariable{
-
-		[SerializeField]
-		private string _value = string.Empty;
-		public string value{
-			get {return useBlackboard? Read<string>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
+	public class BBVector : BBVariable<Vector3>{}
+	[Serializable]
+	public class BBVector2 : BBVariable<Vector2>{}
+	[Serializable]
+	public class BBColor : BBVariable<Color>{}
+	[Serializable]
+	public class BBAnimationCurve : BBVariable<AnimationCurve>{}
+	[Serializable]
+	public class BBQuaternion : BBVariable<Quaternion>{}
+	[Serializable]
+	public class BBString : BBVariable<string>{
 		public override bool isNull{ get {return string.IsNullOrEmpty(value); }}
 	}
 
+	////UNITY OBJECTS
+	[Serializable]
+	public class BBGameObject : BBVariable<GameObject>{}
+	[Serializable]
+	public class BBTransform : BBVariable<Transform>{}
+	[Serializable]
+	public class BBRigidbody : BBVariable<Rigidbody>{}
+	[Serializable]
+	public class BBCollider : BBVariable<Collider>{}
+	[Serializable]
+	public class BBTexture2D : BBVariable<Texture2D>{}
+	[Serializable]
+	public class BBAudioClip : BBVariable<AudioClip>{}
+	[Serializable]
+	public class BBAnimationClip : BBVariable<AnimationClip>{}
+	[Serializable]
+	public class BBMaterial : BBVariable<Material>{}
+	[Serializable]
+	public class BBSprite : BBVariable<Sprite>{}
+	/////
+
+	////SPECIFIC LIST OBJECTS
+	[Serializable]
+	public class BBGameObjectList : BBListVariable<GameObject>{}
+	[Serializable]
+	public class BBComponentList : BBListVariable<Component>{}
+	[Serializable]
+	public class BBUnityObjectList : BBListVariable<UnityEngine.Object>{}
+	[Serializable]
+	public class BBStringList : BBListVariable<string>{}
+	[Serializable]
+	public class BBVectorList : BBListVariable<Vector3>{}
+	[Serializable]
+	public class BBFloatList : BBListVariable<float>{}
+	////
+
 	//Kept for backwards compatibility
 	[Serializable]
-	public class BBComponent : BBUnityObject<Component>{
+	public class BBComponent : BBVariable<Component>, IMultiCastable{
 		[SerializeField]
 		private string _typeName = typeof(Component).AssemblyQualifiedName;
 		public override Type varType{
@@ -320,106 +358,64 @@ namespace NodeCanvas.Variables{
 	}
 	///
 
-	///GENERIC SINGLE UNITY OBJECT
+	///Can be set to any derived type
 	[Serializable]
-	abstract public class BBUnityObject<T> : BBVariable where T : UnityEngine.Object{
+	public class BBObject : BBVariable<UnityEngine.Object>, IMultiCastable{
 		[SerializeField]
-		protected UnityEngine.Object _value;
-		public T value{
-			get {return useBlackboard? Read<T>() : _value? (T)_value : null ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
+		private string _typeName = typeof(UnityEngine.Object).AssemblyQualifiedName;
+		public override Type varType{
+			get {return type;}
+		}
+		public Type type{
+			get {return Type.GetType(_typeName);}
+			set {_typeName = value.AssemblyQualifiedName;}
 		}
 	}
 
-/*
-	////
-	Unfortunately this can't really work. Maybe I find another way around in the future
-	///GENERIC LIST UNITY OBJECT
+	///Can be set to any Enum type
 	[Serializable]
-	abstract public class BBObjectList<T> : BBVariable where T : UnityEngine.Object{
+	public class BBEnum : BBVariable, IMultiCastable{
+
 		[SerializeField]
-		protected List<UnityEngine.Object> _value = new List<UnityEngine.Object>();
-		public List<UnityEngine.Object> value{
-			get	{return useBlackboard? Read<List<UnityEngine.Object>>() : (List<UnityEngine.Object>)_value;}
-			set	{if (useBlackboard) Write(value); else _value = value;}
+		private string _value;
+		[SerializeField]
+		private string _typeName = typeof(Enum).AssemblyQualifiedName;
+		public Enum value{
+			get	{return useBlackboard? Read<Enum>() : (Enum)Enum.Parse(type, _value);}
+			set {if (useBlackboard) Write(value); else _value = Enum.GetName(type, value) ;}
 		}
 		public override Type varType{
-			get	{return typeof(List<>).MakeGenericType(new System.Type[]{typeof(T)} ); }
+			get {return type;}
 		}
-	}
-	////
-*/
-
-	///SPECIFIC SINGLE OBJECTS
-	[Serializable]
-	public class BBGameObject : BBUnityObject<GameObject>{}
-	[Serializable]
-	public class BBTransform : BBUnityObject<Transform>{}
-	[Serializable]
-	public class BBRigidbody : BBUnityObject<Rigidbody>{}
-	[Serializable]
-	public class BBCollider : BBUnityObject<Collider>{}
-	[Serializable]
-	public class BBTexture2D : BBUnityObject<Texture2D>{}
-	[Serializable]
-	public class BBAudioClip : BBUnityObject<AudioClip>{}
-	[Serializable]
-	public class BBAnimationClip : BBUnityObject<AnimationClip>{}
-	[Serializable]
-	public class BBMaterial : BBUnityObject<Material>{}
-	////
-
-	
-	///SPECIFIC LIST OBJECTS
-	[Serializable]
-	public class BBGameObjectList : BBVariable{
-		[SerializeField]
-		private List<GameObject> _value = new List<GameObject>();
-		public List<GameObject> value{
-			get {return useBlackboard? Read<List<GameObject>>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
-		public override string ToString(){
-			return useBlackboard? base.ToString() : "<b>List</b>";
-		}
-	}
-	[Serializable]
-	public class BBComponentList : BBVariable{
-		[SerializeField]
-		private List<Component> _value = new List<Component>();
-		public List<Component> value{
-			get {return useBlackboard? Read<List<Component>>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
-		public override string ToString(){
-			return useBlackboard? base.ToString() : "<b>List</b>";
-		}
-	}
-	[Serializable]
-	public class BBUnityObjectList : BBVariable{
-		[SerializeField]
-		private List<UnityEngine.Object> _value = new List<UnityEngine.Object>();
-		public List<UnityEngine.Object> value{
-			get {return useBlackboard? Read<List<UnityEngine.Object>>() : _value ;}
-			set {if (useBlackboard) Write(value); else _value = value;}
-		}
-		public override string ToString(){
-			return useBlackboard? base.ToString() : "<b>List</b>";
+		public Type type{
+			get {return Type.GetType(_typeName);}
+			set
+			{
+				_typeName = value.AssemblyQualifiedName;
+				_value = Enum.GetNames(value)[0];
+			}
 		}
 	}
 
-	[Serializable]
 	///Use to show a selection of any type of variable
-	public class BBVar : BBVariable{
-		
+	[Serializable]
+	public class BBVar : BBVariable, IMultiCastable{
 		public BBVar(){ blackboardOnly = true; }
+		[SerializeField]
+		private string _typeName = typeof(object).AssemblyQualifiedName;
+		public override Type varType{
+			get {return type;}
+		}
+		public Type type{
+			get {return Type.GetType(_typeName);}
+			set {_typeName = value.AssemblyQualifiedName;}
+		}
 		public object value{
 			get {return Read<object>();}
 			set {Write(value);}
 		}
 	}
 	////
-
 
 
 	///A collection of multiple BBVariables
@@ -431,23 +427,31 @@ namespace NodeCanvas.Variables{
 
 		//value set
 		[SerializeField]
-		private BBBool boolValue           = new BBBool();
+		private BBBool boolValue             = new BBBool{value = true};
 		[SerializeField]
-		private BBFloat floatValue         = new BBFloat();
+		private BBFloat floatValue           = new BBFloat();
 		[SerializeField]
-		private BBInt intValue             = new BBInt();
+		private BBInt intValue               = new BBInt();
 		[SerializeField]
-		private BBString stringValue       = new BBString();
+		private BBString stringValue         = new BBString();
 		[SerializeField]
-		private BBVector2 vector2Value     = new BBVector2();
+		private BBVector2 vector2Value       = new BBVector2();
 		[SerializeField]
-		private BBVector vectorValue       = new BBVector();
+		private BBVector vectorValue         = new BBVector();
 		[SerializeField]
-		private BBColor colorValue         = new BBColor();
+		private BBQuaternion quaternionValue = new BBQuaternion();
 		[SerializeField]
-		private BBGameObject goValue       = new BBGameObject();
+		private BBColor colorValue           = new BBColor();
 		[SerializeField]
-		private BBComponent componentValue = new BBComponent();
+		private BBAnimationCurve curveValue  = new BBAnimationCurve();
+		[SerializeField]
+		private BBGameObject goValue         = new BBGameObject();
+		[SerializeField]
+		private BBComponent componentValue   = new BBComponent();
+		[SerializeField]
+		private BBObject unityObjectValue    = new BBObject();
+		[SerializeField]
+		private BBEnum enumValue             = new BBEnum();
 		//
 
 		private List<BBVariable> allVariables{
@@ -460,9 +464,13 @@ namespace NodeCanvas.Variables{
 					stringValue,
 					vector2Value,
 					vectorValue,
+					quaternionValue,
 					colorValue,
+					curveValue,
 					goValue,
-					componentValue
+					componentValue,
+					unityObjectValue,
+					enumValue
 				};
 			}
 		}
@@ -471,11 +479,11 @@ namespace NodeCanvas.Variables{
 			get
 			{
 				var typeList = new List<Type>();
-				typeList.Add(typeof(void));
 				typeList.Add(typeof(Component));
-				foreach (BBVariable bbVar in allVariables){
+				typeList.Add(typeof(UnityEngine.Object));
+				typeList.Add(typeof(Enum));
+				foreach (BBVariable bbVar in allVariables)
 					typeList.Add(bbVar.varType);
-				}
 				return typeList;
 			}
 		}
@@ -508,8 +516,12 @@ namespace NodeCanvas.Variables{
 			set
 			{
 				selectedTypeName = value != null? value.ToString() : null ;
-				if (typeof(Component).IsAssignableFrom(value))
+				if (typeof(Component).NCIsAssignableFrom(value))
 					componentValue.type = value;
+				if (typeof(UnityEngine.Object).NCIsAssignableFrom(value))
+					unityObjectValue.type = value;
+				if (typeof(Enum).NCIsAssignableFrom(value))
+					enumValue.type = value;
 			}
 		}
 
@@ -524,7 +536,7 @@ namespace NodeCanvas.Variables{
 			}
 		}
 
-		public object selectedObjectValue{
+		public object objectValue{
 			get
 			{
 				if (selectedType == null)
@@ -537,6 +549,12 @@ namespace NodeCanvas.Variables{
 					return;
 				selectedBBVariable.objectValue = value;
 			}
+		}
+
+		public override string ToString(){
+			if (selectedBBVariable != null)
+				return selectedBBVariable.ToString();
+			return string.Empty;
 		}
 	}
 }

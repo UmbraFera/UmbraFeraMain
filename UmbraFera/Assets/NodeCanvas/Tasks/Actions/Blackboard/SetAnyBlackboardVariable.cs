@@ -16,12 +16,12 @@ namespace NodeCanvas.Actions{
     	private BBVariableSet variableSet = new BBVariableSet();
        
         protected override string info{
-            get {return string.Format("Set '{0}' = {1}", targetVariableName, variableSet.selectedBBVariable != null? variableSet.selectedBBVariable.ToString() : ""); }
+            get {return string.Format("<b>'${0}'</b> = {1}", targetVariableName, variableSet.selectedBBVariable != null? variableSet.selectedBBVariable.ToString() : ""); }
         }
 
         protected override void OnExecute(){
            
-            (agent as Blackboard).SetDataValue(targetVariableName, variableSet.selectedObjectValue);
+            (agent as Blackboard).SetDataValue(targetVariableName, variableSet.objectValue);
             EndAction();
         }
 

@@ -2,7 +2,7 @@
 
 namespace NodeCanvas.StateMachines{
 
-	//Identical to conditional connection for now, but better to be on the safe side for the future ;-)
+	///The connection object for FSM nodes. Transitions
 	[AddComponentMenu("")]
 	public class FSMConnection : ConditionalConnection {
 

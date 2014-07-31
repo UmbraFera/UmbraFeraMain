@@ -6,7 +6,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+//using System.Reflection;
 
 namespace NodeCanvas{
 
@@ -25,14 +25,20 @@ namespace NodeCanvas{
 		private Blackboard _blackboard;
 		[HideInInspector]
 		public Transform _nodesRoot;
-		private bool _isRunning;
-		private bool _isPaused;
 
+		private static List<Graph> runningGraphs = new List<Graph>();
+		private float timeStarted;
 		private System.Action FinishCallback;
-		public static bool doHide = false;
+		/////
+		/////
 
-		/////
-		/////
+		new public string name{
+			get {return graphName;}
+		}
+
+		public float elapsedTime{
+			get {return isRunning || isPaused? Time.time - timeStarted : 0;}
+		}
 
 		public string graphName{
 			get
@@ -45,8 +51,8 @@ namespace NodeCanvas{
 			set
 			{
 				_graphName = value;
-				if (gameObject.name != value && !string.IsNullOrEmpty(value))
-					gameObject.name = value;
+				//if (gameObject.name != value && !string.IsNullOrEmpty(value))
+				//	gameObject.name = value;
 			}
 		}
 
@@ -80,10 +86,11 @@ namespace NodeCanvas{
 				#endif
 				
 				_primeNode = value;
+				UpdateNodeIDsInGraph();
 			}
 		}
 
-		///All nodes assigned to this system. The list is already sorted by their IDs
+		///All nodes assigned to this system
 		public List<Node> allNodes{
 			get {return _allNodes;}
 			private set {_allNodes = value;}
@@ -117,16 +124,10 @@ namespace NodeCanvas{
 		}
 
 		///Is the graph running?
-		public bool isRunning{
-			get {return _isRunning;}
-			private set {_isRunning = value;}
-		}
+		public bool isRunning {get; private set;}
 
 		///Is the graph paused?
-		public bool isPaused{
-			get {return _isPaused;}
-			private set {_isPaused = value;}
-		}
+		public bool isPaused {get; private set;}
 
 		public Transform nodesRoot{
 			get
@@ -145,18 +146,23 @@ namespace NodeCanvas{
 			}
 		}
 
+		//Debug purposes
+		public static bool doHide{get{return true;}}
+
 		///////
 		///////
 
-		//To ensure that if it doesn't exist on applicaiton quit, we dont get a leaking GO
+		//Create monomanager and order nodes by IDs
 		protected void Awake(){
 			MonoManager.Create();
+			UpdateNodeIDsInGraph();
+			allNodes = allNodes.OrderBy(node => node.ID).ToList();
 		}
 
 		//Sets all graph's Tasks' owner (which is this)
 		public void SendTaskOwnerDefaults(){
 
-			foreach (Task task in nodesRoot.GetComponentsInChildren<Task>(true))
+			foreach (Task task in GetAllTasksOfType<Task>(true))
 				task.SetOwnerSystem(this);
 		}
 
@@ -177,7 +183,7 @@ namespace NodeCanvas{
 		///Sends an event to all graphs
 		public static void SendGlobalEvent(string eventName){
 
-			foreach(Graph graph in FindObjectsOfType<Graph>())
+			foreach(Graph graph in runningGraphs)
 				graph.SendEvent(eventName);
 		}
 
@@ -198,23 +204,14 @@ namespace NodeCanvas{
 			SendTaskMessage(name, null);
 		}
 
-		public void NotifyTask(string method){
-			SendTaskMessage(method);
-		}
-
 		///Send a message to all tasks in this graph and nested graphs.
 		public void SendTaskMessage(string name, object argument){
 
-			foreach (Task c in nodesRoot.GetComponentsInChildren<Task>(true)){
-				MethodInfo method = c.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+			foreach (Task task in GetAllTasksOfType<Task>(true)){
+				var method = task.GetType().NCGetMethod(name);
 				if (method != null){
-					if (method.GetParameters().Length == 0){
-						method.Invoke(c, null);
-					}
-					else
-					if (method.GetParameters().Length == 1){
-						method.Invoke(c, new object[] {argument} );
-					}
+					var args = method.GetParameters().Length == 0? null : new object[]{argument};
+					method.Invoke(task, args);
 				}
 			}
 		}
@@ -261,23 +258,28 @@ namespace NodeCanvas{
 			}
 			
 			if (blackboard == null && agent != null){
-				Debug.Log("Graph started with null blackboard. Looking for blackboard on agent '" + agent.gameObject + "'", agent.gameObject);
+				Debug.Log("Graph started without blackboard. Looking for blackboard on agent '" + agent.gameObject + "'...", agent.gameObject);
 				blackboard = agent.GetComponent<Blackboard>();
+				if (blackboard != null)
+					Debug.Log("Blackboard found");
 			}
 
+			UpdateNodeIDsInGraph();
+			
 			this.blackboard = blackboard;
 			this.agent = agent;
 			if (callback != null)
 				this.FinishCallback = callback;
 
 			isRunning = true;
+			runningGraphs.Add(this);
 			SendTaskMessage("OnGraphStarted");
 			if (!isPaused){
+				timeStarted = Time.time;
 				foreach (Node node in allNodes)
 					node.OnGraphStarted();
 			}
 
-			UpdateNodeIDsInGraph();
 			MonoManager.current.AddMethod(OnGraphUpdate);
 			OnGraphStarted();
 			isPaused = false;
@@ -302,6 +304,7 @@ namespace NodeCanvas{
 			MonoManager.current.RemoveMethod(OnGraphUpdate);
 			isRunning = false;
 			isPaused = false;
+			runningGraphs.Remove(this);
 			SendTaskMessage("OnGraphStoped");
 
 			foreach(Node node in allNodes){
@@ -330,6 +333,7 @@ namespace NodeCanvas{
 			MonoManager.current.RemoveMethod(OnGraphUpdate);
 			isRunning = false;
 			isPaused = true;
+			runningGraphs.Remove(this);
 			SendTaskMessage("OnGraphPaused");
 
 			foreach (Node node in allNodes)
@@ -344,16 +348,26 @@ namespace NodeCanvas{
 		}
 
 		protected void OnDestroy(){
+			runningGraphs.Remove(this);
 			MonoManager.current.RemoveMethod(OnGraphUpdate);
 		}
 
 		///Get a node by it's ID, null if not found
 		public Node GetNodeWithID(int searchID){
 
-			if (searchID <= allNodes.Count && searchID >= 0)	
-				return allNodes[searchID - 1];
+			if (searchID <= allNodes.Count && searchID >= 0){
+				foreach (Node node in allNodes){
+					if (node.ID == searchID)
+						return node;
+				}
+			}
 
 			return null;
+		}
+
+		///Get all nodes of a specific type
+		public List<T> GetAllNodesOfType<T>() where T:Node{
+			return allNodes.OfType<T>().ToList();
 		}
 
 		///Get a node by it's tag name
@@ -370,7 +384,7 @@ namespace NodeCanvas{
 		public List<T> GetNodesWithTag<T>(string name) where T:Node{
 
 			var nodes = new List<T>();
-			foreach (T node in allNodes.OfType<ITaggable>()){
+			foreach (T node in allNodes.OfType<T>()){
 				if (node.tagName == name)
 					nodes.Add(node);
 			}
@@ -381,7 +395,7 @@ namespace NodeCanvas{
 		public List<T> GetAllTagedNodes<T>() where T:Node{
 
 			var nodes = new List<T>();
-			foreach (T node in allNodes.OfType<ITaggable>()){
+			foreach (T node in allNodes.OfType<T>()){
 				if (!string.IsNullOrEmpty(node.tagName))
 					nodes.Add(node);
 			}
@@ -390,7 +404,7 @@ namespace NodeCanvas{
 
 		///Get a node by it's name
 		public T GetNodeWithName<T>(string name) where T:Node{
-			foreach(T node in allNodes){
+			foreach(T node in allNodes.OfType<T>()){
 				if (StripNameColor(node.nodeName).ToLower() == name.ToLower())
 					return node;
 			}
@@ -418,6 +432,31 @@ namespace NodeCanvas{
 			return rootNodes;
 		}
 
+		///Get all assigned node Tasks in the graph
+		public List<T> GetAllTasksOfType<T>(bool includeNested) where T:Task{
+
+			return (includeNested? this.transform : nodesRoot ).GetComponentsInChildren<T>(true).ToList();
+		}
+
+		///Get all Nested graphs of this graph
+		public List<T> GetAllNestedGraphs<T>(bool recursive) where T:Graph{
+
+			var graphs = new List<T>();
+			foreach (INestedNode node in allNodes.OfType<INestedNode>()){
+
+				if (node.nestedGraph != null && !graphs.Contains((T)node.nestedGraph) ){
+					
+					if (node.nestedGraph is T)
+						graphs.Add((T)node.nestedGraph);
+
+					if (recursive)
+						graphs.AddRange( node.nestedGraph.GetAllNestedGraphs<T>(recursive) );
+				}
+			}
+
+			return graphs;
+		}
+
 		///Update the IDs of the nodes in the graph. Is automatically called whenever a change happens in the graph by the adding removing connecting etc.
 		public void UpdateNodeIDsInGraph(){
 
@@ -433,12 +472,172 @@ namespace NodeCanvas{
 					lastID = node.AssignIDToGraph(this, lastID);
 			}
 
-			allNodes = allNodes.OrderBy(node => node.ID).ToList();
+			//allNodes = allNodes.OrderBy(node => node.ID).ToList();
 
 			//reset the check
 			foreach (Node node in allNodes.ToArray())
 				node.ResetRecursion();
 		}
+
+
+
+
+		///Add a new node to this graph
+		public Node AddNewNode(System.Type nodeType){
+
+			if (!baseNodeType.NCIsAssignableFrom(nodeType)){
+				Debug.Log(nodeType + " can't be added to " + this.GetType() + " graph");
+				return null;
+			}
+
+			var newNode = Node.Create(this, nodeType);
+
+			#if UNITY_EDITOR
+			Undo.RegisterCreatedObjectUndo(newNode.gameObject, "New Node");
+			Undo.RecordObject(this, "New Node");
+			#endif
+
+			allNodes.Add(newNode);
+
+			if (primeNode == null)
+				primeNode = newNode;
+
+			#if UNITY_EDITOR
+			Undo.RecordObject(this, "New Node");
+			#endif
+
+			UpdateNodeIDsInGraph();
+
+			return newNode;
+		}
+
+		///Disconnects and then removes a node from this graph by ID
+		public void RemoveNode(int id){
+			RemoveNode(GetNodeWithID(id));
+		}
+
+		///Disconnects and then removes a node from this graph
+		public void RemoveNode(Node node){
+ 
+			if (!allNodes.Contains(node)){
+				Debug.LogWarning("Node is not part of this graph", gameObject);
+				return;
+			}
+
+			#if UNITY_EDITOR
+			if (node is IAutoSortable && node.inConnections.Count == 1 && node.outConnections.Count == 1){
+				var relinkNode = node.outConnections[0].targetNode;
+				RemoveConnection(node.outConnections[0]);
+				node.inConnections[0].Relink(relinkNode);
+			}
+			#endif
+
+			foreach (Connection outConnection in node.outConnections.ToArray())
+				RemoveConnection(outConnection);
+
+			foreach (Connection inConnection in node.inConnections.ToArray())
+				RemoveConnection(inConnection);
+
+			#if UNITY_EDITOR
+			Undo.RecordObject(this, "Delete Node");
+			#endif
+			
+			allNodes.Remove(node);
+			
+			#if UNITY_EDITOR
+			Undo.DestroyObjectImmediate(node.gameObject);
+			#else
+			DestroyImmediate(node.gameObject, true);
+			#endif
+
+			#if UNITY_EDITOR
+			Undo.RecordObject(this, "Delete Node");
+			#endif
+
+			UpdateNodeIDsInGraph();
+
+			if (node == primeNode)
+				primeNode = GetNodeWithID(1);
+
+			#if UNITY_EDITOR
+			INestedNode nestNode = node as INestedNode;
+			if (nestNode != null && nestNode.nestedGraph != null){
+				var isPrefab = PrefabUtility.GetPrefabType(nestNode.nestedGraph) == PrefabType.Prefab;
+				if (!isPrefab && EditorUtility.DisplayDialog("Deleting Nested Node", "Delete assign nested graph as well?", "Yes", "No")){
+					Undo.DestroyObjectImmediate(nestNode.nestedGraph.gameObject);
+				}
+			}
+			#endif
+		}
+		
+		///Connect two nodes together to the next available port of the source node
+		public Connection ConnectNode(Node sourceNode, Node targetNode){
+			return ConnectNode(sourceNode, targetNode, sourceNode.outConnections.Count);
+		}
+
+		///Connect two nodes together to a specific port index of the source node
+		public Connection ConnectNode(Node sourceNode, Node targetNode, int indexToInsert){
+
+			if (targetNode.IsNewConnectionAllowed(sourceNode) == false)
+				return null;
+
+			#if UNITY_EDITOR
+			Undo.RecordObject(sourceNode, "New Connection");
+			Undo.RecordObject(targetNode, "New Connection");
+			#endif
+
+			var newConnection = Connection.Create(sourceNode, targetNode, indexToInsert);
+			
+			#if UNITY_EDITOR
+			Undo.RegisterCreatedObjectUndo(newConnection.gameObject, "New Connection");
+			Undo.RecordObject(sourceNode, "New Connection");
+			#endif
+
+			sourceNode.OnPortConnected(indexToInsert);
+
+			#if UNITY_EDITOR
+			Undo.RecordObject(this, "New Connection");
+			#endif
+
+			UpdateNodeIDsInGraph();
+			return newConnection;
+		}
+
+		///Removes a connection
+		public void RemoveConnection(Connection connection){
+
+			#if UNITY_EDITOR
+			Undo.RecordObject(connection.sourceNode, "Delete Connection");			
+			#endif
+
+			connection.sourceNode.OnPortDisconnected(connection.sourceNode.outConnections.IndexOf(connection));
+
+			if (Application.isPlaying)
+				connection.ResetConnection();
+
+			#if UNITY_EDITOR
+			Undo.RecordObject(connection.targetNode, "Delete Connection");
+			Undo.RecordObject(connection.sourceNode, "Delete Connection");
+			#endif
+
+			connection.sourceNode.outConnections.Remove(connection);
+			connection.targetNode.inConnections.Remove(connection);
+			
+			#if UNITY_EDITOR
+			Undo.DestroyObjectImmediate(connection.gameObject);
+			Undo.RecordObject(this, "Delete Connection");
+			#else
+			DestroyImmediate(connection.gameObject, true);
+			#endif
+
+			UpdateNodeIDsInGraph();
+		}
+
+
+
+
+
+
 
 		////////////////////////////////////////
 		///////////GUI AND EDITOR STUFF/////////
@@ -452,60 +651,13 @@ namespace NodeCanvas{
 		private Rect inspectorRect = new Rect(15, 55, 0, 0);
 		private Vector2 inspectorScrollPos;
 
-		public static System.Action PostGUI;
 		private static Object _currentSelection;
-		public static Vector2 scrollOffset;
-		public static bool allowClick;
+		private static List<Object> _multiSelection = new List<Object>();
 
-		//
-		public static bool showNodeInfo{
-			get {return EditorPrefs.GetBool("NodeCanvas_showNodeInfo");}
-			set {EditorPrefs.SetBool("NodeCanvas_showNodeInfo", value);}
-		}
-
-		public static bool isLocked{
-			get {return EditorPrefs.GetBool("NodeCanvas_isLocked");}
-			set {EditorPrefs.SetBool("NodeCanvas_isLocked", value);}
-		}		
-
-		public static bool iconMode{
-			get {return EditorPrefs.GetBool("NodeCanvas_iconMode");}
-			set {EditorPrefs.SetBool("NodeCanvas_iconMode", value);}
-		}
-
-		public static int curveMode{
-			get {return EditorPrefs.GetInt("NodeCanvas_curveMode");}
-			set {EditorPrefs.SetInt("NodeCanvas_curveMode", value);}
-		}
-
-		public static bool doSnap{
-			get{return EditorPrefs.GetBool("NodeCanvas_doSnap");}
-			set{EditorPrefs.SetBool("NodeCanvas_doSnap", value);}
-		}
-
-		private bool showBlackboard{
-			get {return EditorPrefs.GetBool("NodeCanvas_showBlackboard");}
-			set {EditorPrefs.SetBool("NodeCanvas_showBlackboard", value);}
-		}
-
-		private bool autoConnect{
-			get {return EditorPrefs.GetBool("NodeCanvas_autoConnect");}
-			set {EditorPrefs.SetBool("NodeCanvas_autoConnect", value);}
-		}
-		//
-
+		public static System.Action PostGUI{get;set;}
+		public static Vector2 scrollOffset{get;set;}
+		public static bool allowClick{get;set;}
 		public static bool useExternalInspector{get;set;}
-
-		public static Object currentSelection{
-			get
-			{
-				//special check to bypass unity operator 
-				if (_currentSelection as Object == null)
-					return null;
-				return _currentSelection;
-			}
-			set {GUIUtility.keyboardControl = 0; _currentSelection = value;}
-		}
 
 		public Graph nestedGraphView{
 			get {return _nestedGraphView;}
@@ -521,6 +673,39 @@ namespace NodeCanvas{
 					_nestedGraphView.agent = this.agent;
 					_nestedGraphView.blackboard = this.blackboard;
 				}
+			}
+		}
+
+		public static Object currentSelection{
+			get
+			{
+				if (multiSelection.Count > 1)
+					return null;
+				if (multiSelection.Count == 1)
+					return multiSelection[0];
+				if (_currentSelection as Object == null)
+					return null;
+				return _currentSelection;
+			}
+			set
+			{
+				if (!multiSelection.Contains(value))
+					multiSelection.Clear();
+				GUIUtility.keyboardControl = 0;
+				_currentSelection = value;
+				SceneView.RepaintAll();
+			}
+		}
+
+		public static List<Object> multiSelection{
+			get {return _multiSelection;}
+			set
+			{
+				if (value.Count == 1){
+					currentSelection = value[0];
+					value.Clear();
+				}
+				_multiSelection = value;
 			}
 		}
 
@@ -549,22 +734,17 @@ namespace NodeCanvas{
 		///
 
 		[ContextMenu("Reset")]
-		protected void Reset(){
-			//Disabled for safety
-		}
-
+		protected void Reset(){}
+		protected void OnValidate(){}
 		[ContextMenu("Copy Component")]
-		protected void CopyComponent(){
-			Debug.Log("Unsupported");
-		}
-
+		protected void CopyComponent(){ Debug.Log("Unsupported");}
 		[ContextMenu("Paste Component Values")]
-		protected void PasteComponentValues(){
-			Debug.Log("Unsupported");
-		}
+		protected void PasteComponentValues(){Debug.Log("Unsupported");}
+
 
 		///Create a new nested graph for the provided INestedNode parent.
 		public static Graph CreateNested(INestedNode parent, System.Type type, string name){
+
 			var newGraph = new GameObject(name).AddComponent(type) as Graph;
 			newGraph.graphName = name;
 			Undo.RegisterCreatedObjectUndo(newGraph.gameObject, "New Graph");
@@ -577,103 +757,6 @@ namespace NodeCanvas{
 
 			parent.nestedGraph = newGraph;
 			return newGraph;
-		}
-
-		///Add a new node to this graph
-		public Node AddNewNode(System.Type nodeType){
-
-			if (!baseNodeType.IsAssignableFrom(nodeType)){
-				Debug.Log(nodeType + " can't be assigned to " + this.GetType() + " graph");
-				return null;
-			}
-
-			var newNode = Node.Create(this, nodeType);
-			Undo.RegisterCreatedObjectUndo(newNode.gameObject, "New Node");
-			Undo.RecordObject(this, "New Node");
-			allNodes.Add(newNode);
-
-			if (primeNode == null)
-				primeNode = newNode;
-
-			Undo.RecordObject(this, "New Node");
-			UpdateNodeIDsInGraph();
-
-			return newNode;
-		}
-
-		///Disconnects and then removes a node from this graph by ID
-		public void RemoveNode(int id){
-			RemoveNode(GetNodeWithID(id));
-		}
-
-		///Disconnects and then removes a node from this graph
-		public void RemoveNode(Node nodeToDelete){
- 
-			foreach (Connection outConnection in nodeToDelete.outConnections.ToArray())
-				RemoveConnection(outConnection);
-
-			foreach (Connection inConnection in nodeToDelete.inConnections.ToArray())
-				RemoveConnection(inConnection);
-
-			Undo.RecordObject(this, "Delete Node");
-			allNodes.Remove(nodeToDelete);
-			Undo.DestroyObjectImmediate(nodeToDelete.gameObject);
-
-			if (nodeToDelete == primeNode)
-				primeNode = GetNodeWithID(1);
-
-			Undo.RecordObject(this, "Delete Node");
-			UpdateNodeIDsInGraph();
-
-			INestedNode nestNode = nodeToDelete as INestedNode;
-			if (nestNode != null && nestNode.nestedGraph != null){
-				var isPrefab = PrefabUtility.GetPrefabType(nestNode.nestedGraph) == PrefabType.Prefab;
-				if (!isPrefab && EditorUtility.DisplayDialog("Deleting Nested Node", "Delete assign nested graph as well?", "Yes", "No"))
-					Undo.DestroyObjectImmediate(nestNode.nestedGraph.gameObject);
-			}
-		}
-		
-		///Connect two nodes together to the next available port of the source node
-		public Connection ConnectNode(Node sourceNode, Node targetNode){
-			return ConnectNode(sourceNode, targetNode, sourceNode.outConnections.Count);
-		}
-
-		///Connect two nodes together to a specific port index of the source node
-		public Connection ConnectNode(Node sourceNode, Node targetNode, int indexToInsert){
-
-			if (targetNode.IsNewConnectionAllowed(sourceNode) == false)
-				return null;
-
-			Undo.RecordObject(sourceNode, "New Connection");
-			Undo.RecordObject(targetNode, "New Connection");
-			var newConnection = Connection.Create(sourceNode, targetNode, indexToInsert);
-			Undo.RegisterCreatedObjectUndo(newConnection.gameObject, "New Connection");
-
-			Undo.RecordObject(sourceNode, "New Connection");
-			sourceNode.OnPortConnected(indexToInsert);
-
-			Undo.RecordObject(this, "New Connection");
-			UpdateNodeIDsInGraph();
-			return newConnection;
-		}
-
-		///Removes a connection
-		public void RemoveConnection(Connection connection){
-
-			Undo.RecordObject(connection.sourceNode, "Delete Connection");			
-			connection.sourceNode.OnPortDisconnected(connection.sourceNode.outConnections.IndexOf(connection));
-
-			if (Application.isPlaying)
-				connection.ResetConnection();
-
-			Undo.RecordObject(connection.targetNode, "Delete Connection");
-			Undo.RecordObject(connection.sourceNode, "Delete Connection");
-			connection.sourceNode.outConnections.Remove(connection);
-			connection.targetNode.inConnections.Remove(connection);
-			Undo.DestroyObjectImmediate(connection.gameObject);
-
-			Undo.RecordObject(this, "Delete Connection");
-			UpdateNodeIDsInGraph();
 		}
 
 		///Clears the whole graph
@@ -696,19 +779,21 @@ namespace NodeCanvas{
 		//This is called while within Begin/End windows and ScrollArea from the GraphEditor. This is the main function that calls others
 		public void ShowNodesGUI(Rect drawCanvas){
 
+			var e = Event.current;
+
 			GUI.color = Color.white;
 			GUI.backgroundColor = Color.white;
 		
-			UpdateNodeIDsInGraph();
-
 			if (primeNode)
 				GUI.Box(new Rect(primeNode.nodeRect.x, primeNode.nodeRect.y - 20, primeNode.nodeRect.width, 20), "<b>START</b>");
 
 			for (int i= 0; i < allNodes.Count; i++){
 				
 				//Panning nodes
-				if (Event.current.button == 2 && Event.current.type == EventType.MouseDrag)
-					allNodes[i].PanNode(Event.current.delta, false);
+				if ( (e.button == 2 && e.type == EventType.MouseDrag) || (e.button == 0 && e.type == EventType.MouseDrag && e.shift && e.isMouse) )	{
+					Undo.RecordObject(allNodes[i], "Move");
+					allNodes[i].nodeRect.center += e.delta;
+				}
 
 				if (RectContainsRect(drawCanvas, allNodes[i].nodeRect))
 					allNodes[i].ShowNodeGUI();
@@ -716,14 +801,15 @@ namespace NodeCanvas{
 
 			//This better be done in seperate pass
 			for (int i= 0; i < allNodes.Count; i++)
-					allNodes[i].DrawNodeConnections();
+				allNodes[i].DrawNodeConnections();
 		}
 
+		//Is rect B marginaly contained inside rect A?
 		bool RectContainsRect(Rect a, Rect b){
-			return a.Contains(   new Vector2( (b.x > a.x? b.x : b.xMax),  (b.y > a.y? b.y : b.yMax) )  );
+			return a.Contains(new Vector2(b.x, b.y)) || a.Contains(new Vector2(b.xMax, b.yMax));
 		}
 
-		//This is called outside
+		//This is called outside of windows
 		public void ShowGraphControls(){
 
 			ShowToolbar();
@@ -737,10 +823,14 @@ namespace NodeCanvas{
 				PostGUI();
 				PostGUI = null;
 			}
-		}
 
+			UpdateNodeIDsInGraph();
+			allNodes = allNodes.OrderBy(node => node.ID).ToList();
+		}
+/*
 		//TODO
 		void AcceptDrops(){
+
 			var e = Event.current;
 			if (e.type == EventType.DragUpdated && DragAndDrop.objectReferences.Length == 1)
 				DragAndDrop.visualMode = DragAndDropVisualMode.Link;
@@ -753,14 +843,15 @@ namespace NodeCanvas{
 			}
 		}
 
-		virtual public void OnDropAccepted(Object o){
+		virtual protected void OnDropAccepted(Object o){
 
 		}
+*/
 
 		//This is called outside Begin/End Windows from GraphEditor.
 		void ShowToolbar(){
 
-			Event e = Event.current;
+			var e = Event.current;
 		
 			GUILayout.BeginHorizontal(EditorStyles.toolbar);
 			GUI.backgroundColor = new Color(1f,1f,1f,0.5f);
@@ -770,26 +861,27 @@ namespace NodeCanvas{
 
 			GUILayout.Space(10);
 
-			showBlackboard = GUILayout.Toggle(showBlackboard, "Blackboard", EditorStyles.toolbarButton);
+			NCPrefs.showBlackboard = GUILayout.Toggle(NCPrefs.showBlackboard, "Blackboard", EditorStyles.toolbarButton);
 			showComments = GUILayout.Toggle(showComments, "Comments", EditorStyles.toolbarButton);
 
 			GUILayout.Space(10);
 
 			if (GUILayout.Button("Options", new GUIStyle(EditorStyles.toolbarDropDown))){
 				var menu = new GenericMenu();
-				menu.AddItem (new GUIContent ("Icon Mode"), iconMode, delegate{iconMode = !iconMode;});
-				menu.AddItem (new GUIContent ("Help Info"), showNodeInfo, delegate{showNodeInfo = !showNodeInfo;});
-				menu.AddItem (new GUIContent ("Auto Connect"), autoConnect, delegate{autoConnect = !autoConnect;});
-				menu.AddItem (new GUIContent ("Grid Snap"), doSnap, delegate{doSnap = !doSnap;});
-				menu.AddItem (new GUIContent ("Curve Mode/Smooth"), curveMode == 0, delegate{curveMode = 0;});
-				menu.AddItem (new GUIContent ("Curve Mode/Stepped"), curveMode == 1, delegate{curveMode = 1;});
+				menu.AddItem (new GUIContent ("Icon Mode"), NCPrefs.iconMode, delegate{NCPrefs.iconMode = !NCPrefs.iconMode;});
+				menu.AddItem (new GUIContent ("Show Task Summary Info"), NCPrefs.showTaskSummary, delegate{NCPrefs.showTaskSummary = !NCPrefs.showTaskSummary;});
+				menu.AddItem (new GUIContent ("Node Help"), NCPrefs.showNodeInfo, delegate{NCPrefs.showNodeInfo = !NCPrefs.showNodeInfo;});
+				menu.AddItem (new GUIContent ("Auto Connect"), NCPrefs.autoConnect, delegate{NCPrefs.autoConnect = !NCPrefs.autoConnect;});
+				menu.AddItem (new GUIContent ("Grid Snap"), NCPrefs.doSnap, delegate{NCPrefs.doSnap = !NCPrefs.doSnap;});
+				menu.AddItem (new GUIContent ("Curve Mode/Smooth"), NCPrefs.curveMode == 0, delegate{NCPrefs.curveMode = 0;});
+				menu.AddItem (new GUIContent ("Curve Mode/Stepped"), NCPrefs.curveMode == 1, delegate{NCPrefs.curveMode = 1;});
 				menu.ShowAsContext();
 			}
 
 			GUILayout.Space(10);
 			GUILayout.FlexibleSpace();
 
-			isLocked = GUILayout.Toggle(isLocked, "Lock", EditorStyles.toolbarButton);
+			NCPrefs.isLocked = GUILayout.Toggle(NCPrefs.isLocked, "Lock", EditorStyles.toolbarButton);
 
 			GUI.backgroundColor = new Color(1, 0.8f, 0.8f, 1);
 			if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(50))){
@@ -817,14 +909,14 @@ namespace NodeCanvas{
 					return;
 				}
 
-				//right click to add node
+				//right click canvas to add node
 				if (e.button == 1 && e.type == EventType.MouseDown){
 					var pos = e.mousePosition + scrollOffset;
 					System.Action<System.Type> Selected = delegate(System.Type type){
 						
 						var newNode = AddNewNode(type);
 						newNode.nodeRect.center = pos;
-						if (autoConnect && focusedNode != null && (focusedNode.outConnections.Count < focusedNode.maxOutConnections || focusedNode.maxOutConnections == -1) ){
+						if (NCPrefs.autoConnect && focusedNode != null && (focusedNode.outConnections.Count < focusedNode.maxOutConnections || focusedNode.maxOutConnections == -1) ){
 							ConnectNode(focusedNode, newNode);
 						} else {
 							currentSelection = newNode;
@@ -838,12 +930,7 @@ namespace NodeCanvas{
 
 			//Contract all nodes
 			if (e.isKey && e.alt && e.keyCode == KeyCode.Q){
-				foreach (Node node in allNodes){
-					Undo.RecordObject(node, "Contract All Nodes");
-					node.nodeRect.width = Node.minSize.x;
-					node.nodeRect.height = Node.minSize.y;
-					Undo.CollapseUndoOperations(Undo.GetCurrentGroup());
-				}
+				ContractAllNodes();
 				e.Use();
 			}
 
@@ -852,6 +939,14 @@ namespace NodeCanvas{
 				currentSelection = focusedNode.Duplicate();
 				e.Use();
 			}
+		}
+
+		void ContractAllNodes(){
+			foreach (Node node in allNodes){
+				Undo.RecordObject(node, "Contract All Nodes");
+				node.nodeRect.width = Node.minSize.x;
+				node.nodeRect.height = Node.minSize.y;
+			}			
 		}
 
 		//Show the comments window
@@ -881,13 +976,13 @@ namespace NodeCanvas{
 			var viewRect = new Rect(inspectorRect.x + 1, inspectorRect.y, inspectorRect.width + 18, Screen.height - inspectorRect.y - 30);
 			inspectorScrollPos = GUI.BeginScrollView(viewRect, inspectorScrollPos, inspectorRect);
 
-			GUILayout.BeginArea(inspectorRect, (focusedNode? focusedNode.nodeName : "Connection"), new GUIStyle("editorPanel"));
+			GUILayout.BeginArea(inspectorRect, (focusedNode? focusedNode.nodeName : "Connection"), "editorPanel");
 			GUILayout.Space(5);
 			GUI.skin = null;
 
 			if (focusedNode)
 				focusedNode.ShowNodeInspectorGUI();
-			
+			else
 			if (focusedConnection)
 				focusedConnection.ShowConnectionInspectorGUI();
 
@@ -907,7 +1002,7 @@ namespace NodeCanvas{
 		//Show the target blackboard window
 		void ShowBlackboardGUI(){
 
-			if (!showBlackboard || blackboard == null){
+			if (!NCPrefs.showBlackboard || blackboard == null){
 				blackboardRect.height = 0;
 				return;
 			}
@@ -929,6 +1024,15 @@ namespace NodeCanvas{
 			if (Event.current.type == EventType.Repaint)
 				blackboardRect.height = GUILayoutUtility.GetLastRect().yMax + 5;
 			GUILayout.EndArea();		
+		}
+
+		void OnDrawGizmos(){
+
+			foreach (Task task in GetAllTasksOfType<Task>(true))
+				task.DrawGizmos();
+
+			if (focusedNode && focusedNode is ITaskAssignable && ((ITaskAssignable)focusedNode).task != null )
+				(focusedNode as ITaskAssignable).task.DrawGizmosSelected();
 		}
 
 		#endif

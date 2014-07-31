@@ -5,7 +5,7 @@ using NodeCanvas;
 
 namespace NodeCanvasEditor{
 
-	[CustomEditor(typeof(Task))]
+	[CustomEditor(typeof(Task), true)]
 	public class TaskInspector : Editor {
 
 		override public void OnInspectorGUI(){
@@ -13,10 +13,10 @@ namespace NodeCanvasEditor{
 			(target as Task).ShowInspectorGUI();
 			EditorUtils.EndOfInspector();
 
-			Repaint();
-			
-			if (GUI.changed)
+			if (GUI.changed){
 				EditorUtility.SetDirty(target);
+				Repaint();
+			}
 		}
 	}
 }

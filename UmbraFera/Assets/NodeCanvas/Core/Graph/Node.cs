@@ -28,34 +28,36 @@ namespace NodeCanvas{
 		private List<Connection> _outConnections = new List<Connection>();
 		[SerializeField]
 		private Graph _graph;
-
-		private Status _state = Status.Resting;
-		private int _ID;
-		private bool isChecked;
-
-		//store to avoid spamming reflection
-		private string _nodeName;
-		private string _nodeDescription;
-		//
-
-		////
-		////
-
 		[SerializeField]
 		private string _customName;
+		[SerializeField]
+		private string _tagName;
+
+		private Status _status = Status.Resting;
+		private string _nodeName;
+
+		/////
+
 		private string customName{
 			get {return _customName;}
 			set {_customName = value;}
 		}
 
-		[SerializeField]
-		private string _tagName;
+
 		public string tagName{
 			get {return _tagName;}
 			private set {_tagName = value;}
 		}
 
-		///The title name of the node shown in the window if editor is not in Icon Mode
+		new public string name{
+			get {return nodeName;}
+		}
+
+		new public string tag{
+			get {return tagName;}
+		}
+
+		///The title name of the node shown in the window if editor is not in Icon Mode. This is a property so title name may change instance wise
 		virtual public string nodeName{
 			get
 			{
@@ -63,41 +65,12 @@ namespace NodeCanvas{
 					return customName;
 
 				if (string.IsNullOrEmpty(_nodeName) ){
-					NameAttribute nameAtt = this.GetType().GetCustomAttributes(typeof(NameAttribute), false).FirstOrDefault() as NameAttribute;
-					if (nameAtt != null){
-						_nodeName = nameAtt.name;
-					} else {
-
-						#if UNITY_EDITOR
-						_nodeName = EditorUtils.CamelCaseToWords(GetType().Name);
-						#endif
-						#if !UNITY_EDITOR
-						_nodeName = GetType().Name;
-						#endif
-					}
+					var nameAtt = this.GetType().NCGetAttribute(typeof(NameAttribute), false) as NameAttribute;
+					_nodeName = nameAtt != null? nameAtt.name : GetType().Name;
 				}
 				return _nodeName;
 			}
-			protected set
-			{
-				customName = value;
-			}
-		}
-
-		///The node description shown within the inspector if Editor Node Info is on.
-		virtual public string nodeDescription{
-			get
-			{
-				if (string.IsNullOrEmpty(_nodeDescription)){
-					DescriptionAttribute descAtt = this.GetType().GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() as DescriptionAttribute;
-					if (descAtt != null){
-						_nodeDescription = descAtt.description;
-					} else {
-						_nodeDescription = "No Description";
-					}
-				}
-				return _nodeDescription;
-			}
+			private set {customName = value;}
 		}
 
 		///The numer of possible inputs. -1 for infinite
@@ -138,17 +111,14 @@ namespace NodeCanvas{
 			private set {_graph = value;}
 		}
 
-		///The current status of the node (aka Status)
+		///The current status of the node
 		public Status status{
-			get {return _state;}
-			protected set {_state = value;}
+			get {return _status;}
+			protected set {_status = value;}
 		}
 
 		///The node's ID in the graph
-		public int ID{
-			get {return _ID;}
-			private set {_ID = value;}
-		}
+		public int ID{get; private set;}
 
 		///The current agent. Taken from the graph this node belongs to
 		protected Component graphAgent{
@@ -160,14 +130,70 @@ namespace NodeCanvas{
 			get {return graph != null? graph.blackboard : null;}
 		}
 
-		///Returns the first parent node found, or null if none
-		public Node parentNode{
-			get	{return inConnections.Count != 0? inConnections[0].sourceNode : null;}
-		}
+		//Used to check recursion
+		private bool isChecked{get;set;}
 
 		/////////////////////
 		/////////////////////
 		/////////////////////
+
+		//protect for future case
+		protected void Awake(){
+			OnAwake();
+		}
+		
+		virtual protected void OnAwake(){}
+
+		///Create a new Node
+		public static Node Create(Graph ownerGraph, System.Type nodeType){
+
+			var newNode = new GameObject(nodeType.Name).AddComponent(nodeType) as Node;
+			newNode.graph = ownerGraph;
+			newNode.transform.parent = ownerGraph.nodesRoot;
+			newNode.transform.localPosition = Vector3.zero;
+			newNode.UpdateNodeBBFields(ownerGraph.blackboard);
+			newNode.OnCreate();
+			return newNode;
+		}
+
+		///Called when the node is created
+		virtual protected void OnCreate(){
+			
+		}
+
+		///Returns if a new connection should be allowed with the source node.
+		public bool IsNewConnectionAllowed(Node sourceNode){
+			
+			if (this == sourceNode){
+				Debug.LogWarning("Node can't connect to itself");
+				return false;
+			}
+
+			foreach (Connection c in sourceNode.outConnections){
+				if (c.targetNode == this){
+					Debug.LogWarning("Nodes are already connected");
+					return false;
+				}
+			}
+
+			if (sourceNode.outConnections.Count >= sourceNode.maxOutConnections && sourceNode.maxOutConnections != -1){
+				Debug.LogWarning("Source node can have no more out connections.");
+				return false;
+			}
+
+			if (this == graph.primeNode && maxInConnections == 1){
+				Debug.LogWarning("Target node can have no more connections");
+				return false;
+			}
+
+			if (maxInConnections <= inConnections.Count && maxInConnections != -1){
+				Debug.LogWarning("Target node can have no more connections");
+				return false;
+			}
+
+			return true;
+		}
+
 
 		public Status Execute(){
 			return Execute(graphAgent, graphBlackboard);
@@ -198,17 +224,14 @@ namespace NodeCanvas{
 
 		///Override this to specify what the node does.
 		virtual protected Status OnExecute(Component agent, Blackboard blackboard){
-			
 			return OnExecute(agent);
 		}
 
 		virtual protected Status OnExecute(Component agent){
-
 			return OnExecute();
 		}
 
 		virtual protected Status OnExecute(){
-
 			return status;
 		}
 
@@ -216,7 +239,7 @@ namespace NodeCanvas{
 			ResetNode(true);
 		}
 
-		///Recursively reset the node and child nodes if it's node Resting already
+		///Recursively reset the node and child nodes if it's not Resting already
 		public void ResetNode(bool recursively){
 
 			if (status == Status.Resting || isChecked)
@@ -251,7 +274,7 @@ namespace NodeCanvas{
 			BBVariable.SetBBFields(bb, this);
 		}
 
-		///Updates the node ID in it's current graph. This is called in the editor GUI for convenience, as well as whenever a change is made in the node graph and from the node graph.
+		//Updates the node ID in it's current graph. This is called in the editor GUI for convenience, as well as whenever a change is made in the node graph and from the node graph.
 		public int AssignIDToGraph(Graph toNodeGraph, int lastID){
 
 			if (isChecked)
@@ -262,10 +285,8 @@ namespace NodeCanvas{
 			lastID++;
 			ID = lastID;
 
-			for ( int i= 0; i < outConnections.Count; i++){
-				Connection connection= outConnections[i];
-				lastID = connection.targetNode.AssignIDToGraph(toNodeGraph, lastID);
-			}
+			for (int i = 0; i < outConnections.Count; i++)
+				lastID = outConnections[i].targetNode.AssignIDToGraph(toNodeGraph, lastID);
 
 			return lastID;
 		}
@@ -276,57 +297,12 @@ namespace NodeCanvas{
 				return;
 
 			isChecked = false;
-			
 			for (int i = 0; i < outConnections.Count; i++)
 				outConnections[i].targetNode.ResetRecursion();
 		}
 
-		///Fetch all child nodes of the node, optionaly including this
-		public List<Node> GetAllChildNodesRecursively(bool includeThis){
 
-			var childList = new List<Node>();
-			if (isChecked)
-				return childList;
-
-			isChecked = true;
-
-			if (includeThis)
-				childList.Add(this);
-
-			foreach (Connection connection in outConnections){
-				childList.Add(connection.targetNode);
-				childList.AddRange(connection.targetNode.GetAllChildNodesRecursively(false));
-			}
-
-			isChecked = false;
-			return childList;
-		}
-
-		///Fetch all child nodes of this node with their depth in regards to this node.
-		public Dictionary<Node, int> GetAllChildNodesWithDepthRecursively(bool includeThis, int startIndex){
-
-			var childList = new Dictionary<Node, int>();
-			if (isChecked)
-				return childList;
-
-			isChecked = true;
-
-			if (includeThis)
-				childList[this] = startIndex;
-
-			foreach (Connection connection in outConnections){
-				childList[connection.targetNode] = startIndex + 1;
-				foreach (KeyValuePair<Node, int> pair in connection.targetNode.GetAllChildNodesWithDepthRecursively(false, startIndex + 1))
-					childList.Add(pair.Key, pair.Value);
-			}
-
-			isChecked = false;
-			return childList;
-		}
-
-
-
-		///Returns all parent nodes in case node can have many parents like in FSM
+		///Returns all parent nodes in case node can have many parents like in FSM and Dialogue Trees
 		public List<Node> GetParentNodes(){
 			if (inConnections.Count != 0)
 				return inConnections.Select(c => c.sourceNode).ToList();
@@ -365,8 +341,9 @@ namespace NodeCanvas{
 
 		}
 
-		public override string ToString(){
-			return string.Format("{0} ({1})", nodeName, this is ITaskAssignable? (this as ITaskAssignable).task.ToString() : "" );
+		sealed public override string ToString(){
+			var assignable = this as ITaskAssignable;
+			return string.Format("{0} ({1})", nodeName, assignable != null && assignable.task != null? assignable.task.ToString() : "" );
 		}
 
 		////////////////////////////////////////
@@ -375,33 +352,104 @@ namespace NodeCanvas{
 		#if UNITY_EDITOR
 
 		[HideInInspector]
-		public Rect nodeRect = new Rect(100,300,100,40);
-
+		public Rect nodeRect = new Rect(0,0,minSize.x, minSize.y);
 		[SerializeField]
 		private string nodeComment = string.Empty;
-		private bool inResizeMode;
+		[SerializeField]
+		private bool _childrenCollapsed = false;
+
 		private Texture2D _icon;
-		private bool nodeIsClicked;
+		private string _inheritedIconName;
+		private string _nodeDescription;
 
-		private static Port clickedPort;
+		private bool inResizeMode{get;set;}
+		private bool nodeIsPressed{get;set;}
+		private static Port clickedPort{get;set;}
+		private static GUIStyle _centerLabel = null;
 
-		public static Vector2 minSize{
-			get {return new Vector2(100, 40);}
-		}
-
-		public bool inIconMode{
-			get {return icon != null && Graph.iconMode;}
-		}
-
-		public Texture2D icon{
+		private static GUIStyle centerLabel{
 			get
 			{
-				if (_icon == null){
-					var iconAtt = this.GetType().GetCustomAttributes(typeof(IconAttribute), true).FirstOrDefault() as IconAttribute;
+				if (_centerLabel == null)
+					_centerLabel = new GUIStyle("label");
+
+				_centerLabel.alignment = TextAnchor.UpperCenter;
+				_centerLabel.richText = true;
+				return _centerLabel;
+			}
+		}
+
+		//The help info of the node
+		private string nodeDescription{
+			get
+			{
+				if (string.IsNullOrEmpty(_nodeDescription)){
+					var descAtt = this.GetType().NCGetAttribute(typeof(DescriptionAttribute), false) as DescriptionAttribute;
+					_nodeDescription = descAtt != null? descAtt.description : "No Description";
+				}
+				return _nodeDescription;
+			}
+		}
+
+		///Editor! Active is relevant to the input connections
+		public bool isActive{
+			get
+			{
+				for (int i = 0; i < inConnections.Count; i++)
+					if (inConnections[i].isActive)
+						return true;
+				return inConnections.Count == 0;
+			}
+		}
+
+		//are children collapsed?
+		private bool childrenCollapsed{
+			get {return _childrenCollapsed;}
+			set {_childrenCollapsed = value;}
+		}
+
+		//EDITOR! is the node hidden due to parent has children collapsed or is hidden itself?
+		public bool isHidden {
+			get
+			{
+				
+				if (this is IAutoSortable){
+					foreach (Node parent in inConnections.Select(c => c.sourceNode)){
+						if (parent.ID > this.ID)
+							continue;
+						if (parent.childrenCollapsed || parent.isHidden)
+							return true;
+					}
+				}
+				return false;
+			}
+		}
+
+		private bool isSelected{
+			get {return Graph.currentSelection == this || Graph.multiSelection.Contains(this);}
+		}
+
+		//The icon of the node
+		private Texture2D icon{
+			get
+			{
+				if (_icon == null /* || this is ITaskAssignable */){
+					var assignable = this as ITaskAssignable;
+					if (assignable != null && assignable.task != null && assignable.task.icon != null){
+						_icon = assignable.task.icon;
+						return _icon;
+					}
+
+					var iconAtt = this.GetType().NCGetAttribute(typeof(IconAttribute), true) as IconAttribute;
 					if (iconAtt != null) _icon = (Texture2D)Resources.Load(iconAtt.iconName);
 				}
 				return _icon;			
 			}
+		}
+
+		//Is NC in icon mode?
+		protected bool inIconMode{
+			get {return NCPrefs.iconMode && icon != null;}
 		}
 
 		public static Color successColor{
@@ -409,7 +457,7 @@ namespace NodeCanvas{
 		}
 
 		public static Color failureColor{
-			get {return new Color(1.0f, 0.4f, 0.4f);}
+			get {return new Color(1.0f, 0.3f, 0.3f);}
 		}
 
 		public static Color runningColor{
@@ -420,66 +468,23 @@ namespace NodeCanvas{
 			get {return new Color(0.7f, 0.7f, 1f, 0.8f);}
 		}
 
+		public static Vector2 minSize{
+			get {return new Vector2(100, 20);}
+		}
+
 		////////////////
 
-		virtual protected void Reset(){
-
+		//protect them
+		protected void Reset(){
+			OnEditorReset();
 		}
-
-		//Called in editor as usual
-		virtual protected void OnValidate(){
+		protected void OnValidate(){
 			UpdateNodeBBFields(graphBlackboard);
+			OnEditorValidate();
 		}
 
-		///Create a new Node
-		public static Node Create(Graph ownerGraph, System.Type nodeType){
-
-			Node newNode = new GameObject(nodeType.ToString()).AddComponent(nodeType) as Node;
-			newNode.graph = ownerGraph;
-			newNode.transform.parent = ownerGraph.nodesRoot;
-			newNode.transform.localPosition = Vector3.zero;
-			newNode.UpdateNodeBBFields(ownerGraph.blackboard);
-			newNode.OnCreate();
-			return newNode;
-		}
-
-		///Called when the node is created
-		virtual protected void OnCreate(){
-			
-		}
-
-		///Returns if a new connection should be allowed with the source node.
-		public bool IsNewConnectionAllowed(Node sourceNode){
-			
-			if (this == sourceNode){
-				Debug.LogWarning("Node can't connect to itself");
-				return false;
-			}
-
-			if (sourceNode.outConnections.Count >= sourceNode.maxOutConnections && sourceNode.maxOutConnections != -1){
-				Debug.LogWarning("Source node can have no more out connections.");
-				return false;
-			}
-
-			if (this == graph.primeNode && maxInConnections == 1){
-				Debug.LogWarning("Target node can have no more connections");
-				return false;
-			}
-
-			if (maxInConnections <= inConnections.Count && maxInConnections != -1){
-				Debug.LogWarning("Target node can have no more connections");
-				return false;
-			}
-
-			foreach (Connection c in sourceNode.outConnections){
-				if (c.targetNode == this){
-					Debug.LogWarning("Nodes are already connected");
-					return false;
-				}
-			}
-
-			return true;
-		}
+		virtual protected void OnEditorReset(){}
+		virtual protected void OnEditorValidate(){}
 
 		//Moves the node to another graph.CAREFULL! Connections must be Relinked as well
 		public void MoveToGraph(Graph newGraph){
@@ -494,25 +499,6 @@ namespace NodeCanvas{
 			transform.localPosition = Vector3.zero;
 		}
 
-		//Sorts the connections based on the child nodes and this node X position. Possible only when not in play mode
-		protected void SortConnectionsByPositionX(){
-			
-			if (!Application.isPlaying){
-
-				if (isChecked)
-					return;
-
-				isChecked = true;
-
-				Undo.RecordObject(this, "Re-Sort");
-				outConnections = outConnections.OrderBy(c => c.targetNode.nodeRect.center.x ).ToList();
-				foreach(Connection connection in inConnections)
-					connection.sourceNode.SortConnectionsByPositionX();
-
-				isChecked = false;
-			}
-		}
-
 		//The main function for drawing a node's gui.Fires off others.
 		public void ShowNodeGUI(){
 
@@ -524,22 +510,29 @@ namespace NodeCanvas{
 		//Draw the window
 		void DrawNodeWindow(){
 
-			GUI.color = Graph.currentSelection == this? new Color(0.9f, 0.9f, 1) : Color.white;
-			if (inIconMode){
-				nodeRect = GUILayout.Window(ID, nodeRect, NodeWindowGUI, string.Empty, "compactWindow");
-			} else {
-				nodeRect = GUILayout.Window (ID, nodeRect, NodeWindowGUI, nodeName, "window");
+			if (isHidden)
+				return;
+
+			if (childrenCollapsed){
+				var r = new Rect(nodeRect.x, nodeRect.yMax + 10, nodeRect.width, 20);
+				EditorGUIUtility.AddCursorRect(r, MouseCursor.Link);
+				if (GUI.Button(r, "HIDDEN", "box"))
+					childrenCollapsed = false;
 			}
 
+			GUI.color = isActive? Color.white : new Color(0.9f, 0.9f, 0.9f, 0.8f);
+
+			GUI.color = Graph.currentSelection == this? new Color(0.9f, 0.9f, 1) : GUI.color;
+			GUI.color = Application.isPlaying? new Color(0.9f,0.9f,0.9f) : GUI.color;
+			nodeRect = GUILayout.Window (ID, nodeRect, NodeWindowGUI, string.Empty, "window");
+
 			GUI.Box(nodeRect, "", "windowShadow");
-			GUI.color = new Color(1,1,1,0.3f);
+			GUI.color = new Color(1,1,1,0.5f);
 			GUI.Box(new Rect(nodeRect.x+6, nodeRect.y+6, nodeRect.width, nodeRect.height), "", "windowShadow");
 
-			if (Application.isPlaying){
+			if (Application.isPlaying && status != Status.Resting){
 
-				if (status == Status.Resting)
-					GUI.color = restingColor;
-				else if (status == Status.Success)
+				if (status == Status.Success)
 					GUI.color = successColor;
 				else if (status == Status.Running)
 					GUI.color = runningColor;
@@ -552,32 +545,52 @@ namespace NodeCanvas{
 				
 			} else {
 				
-				if (Graph.currentSelection == this){
+
+				if (isSelected){
 					GUI.color = restingColor;
 					GUI.Box(nodeRect, "", "windowHighlight");
 				}
 			}
 
+			if (isSelected && GUIUtility.keyboardControl == 0 && Event.current.keyCode == KeyCode.Delete && Event.current.type == EventType.KeyUp)
+				Graph.PostGUI += delegate{ graph.RemoveNode(this); };
+
 			GUI.color = Color.white;
 			EditorGUIUtility.AddCursorRect(nodeRect, MouseCursor.Link);
+		}
+
+		//removes the text color that some nodes add with html tags
+		string StripNameColor(string name){
+			if (name.StartsWith("<") && name.EndsWith(">")){
+				name = name.Replace( name.Substring (0, name.IndexOf(">")+1), "" );
+				name = name.Replace( name.Substring (name.IndexOf("<"), name.LastIndexOf(">")+1 - name.IndexOf("<")), "" );
+			}
+			return name;
 		}
 
 		//This is the callback function of the GUILayout.window. Everything here is INSIDE the node Window.
 		void NodeWindowGUI(int ID){
 
+			////TITLE///
 			if (inIconMode){
-				GUI.backgroundColor = new Color(0,0,0,0.05f);
+				GUI.color = EditorGUIUtility.isProSkin? Color.white : new Color(0f,0f,0f, 0.7f);
+				GUI.backgroundColor = new Color(0,0,0,0);
 				GUILayout.Box(icon);
 				GUI.backgroundColor = Color.white;
+				GUI.color = Color.white;
+			} else {
+				var title = nodeName;
+				var defaultColor = "<color=#eed9a7>";
+				if (!EditorGUIUtility.isProSkin){
+					title = StripNameColor(title);
+					defaultColor = "<color=#222222>";
+				}
+				GUILayout.Label("<b><size=12>" + defaultColor + title + "</color></size></b>", centerLabel);
 			}
+			///
 
-			Event e = Event.current;
 
-			if (Graph.currentSelection == this && e.keyCode == KeyCode.Delete && e.type == EventType.KeyUp){
-				Graph.PostGUI += delegate{ graph.RemoveNode(this); };
-				e.Use();
-				return;
-			}
+			var e = Event.current;
 
 		    var scaleNodeRect= new Rect(nodeRect.width-10,nodeRect.height-10, 8, 8);
 		    GUI.Box(scaleNodeRect, "", "nodeScaleBtn");
@@ -588,15 +601,15 @@ namespace NodeCanvas{
 		    	e.Use();
 		    }
 
-			if (Graph.allowClick && e.button == 0 && e.type == EventType.MouseDown){
+			if (Graph.allowClick && e.button != 2 && e.type == EventType.MouseDown){
 
 				Graph.currentSelection = this;
-				nodeIsClicked = true;
+				nodeIsPressed = true;
 
 				if (e.clickCount == 2){
 		    		if (this is INestedNode && (this as INestedNode).nestedGraph != null ){
 	    				graph.nestedGraphView = (this as INestedNode).nestedGraph;
-	    				nodeIsClicked = false;
+	    				nodeIsPressed = false;
 		    		} else {
 			    		AssetDatabase.OpenAsset(MonoScript.FromMonoBehaviour(this));
 		    		}
@@ -612,33 +625,101 @@ namespace NodeCanvas{
 
 	    	if (e.type == EventType.MouseUp){
 	    		inResizeMode = false;
-	    		nodeIsClicked = false;
+	    		nodeIsPressed = false;
 	    		if (this is IAutoSortable)
 	    			Graph.PostGUI += delegate { SortConnectionsByPositionX(); };
 	    		OnNodeReleased();
 	    	}
+	    	///
 
-	    	//Context Menu
-		    if (Graph.allowClick && e.button == 1 && e.type == EventType.MouseDown){
+	    	////CONTEXT MENU////
+		    if (Graph.allowClick && e.button == 1 && e.type == EventType.MouseUp){
 
-	            var menu = new GenericMenu();
-	            if (graph.primeNode != this && allowAsPrime)
-		            menu.AddItem (new GUIContent ("Make Start (CTRL+Click)"), false, delegate{graph.primeNode = this;});
+		    	if (Graph.multiSelection.Count > 0){
+		            var menu = new GenericMenu();
 
-		        if (this is INestedNode)
-		        	menu.AddItem (new GUIContent ("Edit Nested (Double Click)"), false, delegate{graph.nestedGraphView = (this as INestedNode).nestedGraph; } );
+		            menu.AddItem (new GUIContent ("Delete Selected Nodes"), false, delegate{ foreach (Node node in Graph.multiSelection) graph.RemoveNode(node); });
 
-				menu.AddItem (new GUIContent ("Duplicate (CTRL+D)"), false, delegate{Duplicate();});
-	            OnContextMenu(menu);
-				menu.AddSeparator("/");
-	            menu.AddItem (new GUIContent ("Delete (DEL)"), false, delegate{graph.RemoveNode(this);});
-	            menu.ShowAsContext();
-	            e.Use();
+			        menu.ShowAsContext();
+			        e.Use();
+			        return;
+
+		    	} else {
+
+		            var menu = new GenericMenu();
+		            if (graph.primeNode != this && allowAsPrime)
+			            menu.AddItem (new GUIContent ("Make Start (CTRL+Click)"), false, delegate{graph.primeNode = this;});
+
+			        if (this is INestedNode)
+			        	menu.AddItem (new GUIContent ("Edit Nested (Double Click)"), false, delegate{graph.nestedGraphView = (this as INestedNode).nestedGraph; } );
+
+					menu.AddItem (new GUIContent ("Duplicate (CTRL+D)"), false, delegate{Duplicate();});
+		            
+		            if (inConnections.Count > 0)
+			            menu.AddItem (new GUIContent (isActive? "Disable" : "Enable"), false, delegate{SetActive(!isActive);});
+
+					if (this is IAutoSortable && outConnections.Count > 0)
+						menu.AddItem (new GUIContent (childrenCollapsed? "Show Children" : "Hide Children"), false, delegate{ childrenCollapsed = !childrenCollapsed; });
+
+					if (this is ITaskAssignable){
+
+						var assignable = this as ITaskAssignable;
+						if (assignable.task != null){
+							menu.AddItem (new GUIContent("Copy Assigned Task"), false, delegate{ Task.copiedTask = assignable.task; });
+						} else {
+							menu.AddDisabledItem(new GUIContent("Copy Assigned Task"));
+						}
+
+						if (Task.copiedTask != null) {
+							menu.AddItem (new GUIContent("Paste Assign Task"), false, delegate{
+								
+								try
+								{
+									var current = assignable.task;
+									assignable.task = Task.copiedTask;
+									assignable.task = current;
+								}
+								catch
+								{
+									Debug.LogWarning(string.Format("Copied Task '{0}'' is incompatible type for target node '{1}'", Task.copiedTask.name, this.name));
+									return;
+								}
+
+								if (assignable.task == Task.copiedTask)
+									return;
+
+								if (assignable.task != null){
+
+									if (EditorUtility.DisplayDialog("Paste Task", string.Format("Node already has a Task assigned '{0}'. Replace assigned task with pasted task '{1}'?", assignable.task.name, Task.copiedTask.name), "YES", "NO")){
+										Undo.DestroyObjectImmediate(assignable.task);
+									} else {
+										return;
+									}
+								}
+
+								assignable.task = Task.copiedTask.CopyTo(gameObject);
+
+							});
+
+						} else {
+							menu.AddDisabledItem(new GUIContent("Paste Assigned Task"));
+						}
+					}
+					
+		            OnContextMenu(menu);
+
+					menu.AddSeparator("/");
+		            menu.AddItem (new GUIContent ("Delete (DEL)"), false, delegate{graph.RemoveNode(this);});
+
+		            menu.ShowAsContext();
+		            e.Use();
+		    	}
 		    }
 		    ///
 
 	        ////STATUS MARK ICONS////
 	        if (Application.isPlaying){
+
 		        var markRect = new Rect(5, 5, 15, 15);
 		        if (status == Status.Success){
 		        	GUI.color = successColor;
@@ -654,29 +735,56 @@ namespace NodeCanvas{
 		    }
 	        ///
 
+	        ////NODE GUI////
 	        GUI.color = Color.white;
 	        GUI.skin = null;
 	        GUI.skin.label.richText = true;
-	        GUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
+	        GUILayout.BeginHorizontal();
 			GUILayout.FlexibleSpace();
 			GUILayout.BeginVertical();
+
 			OnNodeGUI();
+
+			if (this is ITaskAssignable){
+				var task = (this as ITaskAssignable).task;
+				if (task != null){
+					GUILayout.Label(NCPrefs.showTaskSummary? task.taskInfo : string.Format("<b>{0}</b>", task.taskName));
+				} else {
+					GUILayout.Label("No Task");
+				}
+			}
+
 			GUILayout.EndVertical();
 			GUILayout.FlexibleSpace();
 			GUILayout.EndHorizontal();
 
-
-		    ////LAST
+		    ////LAST (BUT NOT LEAST)///
 		    if (inResizeMode){
 
 		    	nodeRect.width = Mathf.Max(e.mousePosition.x+10, minSize.x);
 		    	nodeRect.height = Mathf.Max(e.mousePosition.y+10, minSize.y);
 
-		    } else if (Graph.allowClick && e.button != 2){
+		    } else
+		    if (Graph.allowClick && e.button != 2){
+
+	    		if (e.type == EventType.MouseDrag){
+	    			foreach(Node node in Graph.multiSelection){
+	    				if (node != null){
+		    				Undo.RecordObject(node, "Move");
+		    				node.nodeRect.center += e.delta;
+		    			}
+	    			}
+	    		}
 
 	    		Undo.RecordObject(this, "Move");
-		    	if (e.shift && nodeIsClicked && e.button == 0 && e.type == EventType.MouseDrag)
-		    		PanNode(e.delta, e.shift);
+
+		    	if (NCPrefs.doSnap && !e.shift && Graph.multiSelection.Count == 0 && nodeIsPressed){
+					nodeRect.x = Mathf.Round(nodeRect.x / 15) * 15;
+					nodeRect.y = Mathf.Round(nodeRect.y / 15) * 15;
+				}		
+
+		    	if (this is IAutoSortable && (e.shift || childrenCollapsed ) && e.type == EventType.MouseDrag && nodeIsPressed)
+		    		RecursivePanNode(e.delta);
 
 		    	GUI.DragWindow();
 		    }
@@ -685,20 +793,21 @@ namespace NodeCanvas{
 		//The comments of the node sitting next or bottom of it
 		void DrawNodeComments(){
 
-			if (graph && graph.showComments && !string.IsNullOrEmpty(nodeComment)){
+			if (!string.IsNullOrEmpty(nodeComment) && graph && graph.showComments){
 
 				var commentsRect = new Rect();
+				var size = new GUIStyle("textArea").CalcSize(new GUIContent(nodeComment));
 
 				if (outConnections.Count == 0){
-					var height = new GUIStyle("textArea").CalcHeight(new GUIContent(nodeComment), nodeRect.width);
-					commentsRect = new Rect(nodeRect.x, nodeRect.yMax + 5, nodeRect.width, height);
+					size.y = new GUIStyle("textArea").CalcHeight(new GUIContent(nodeComment), nodeRect.width);
+					commentsRect = new Rect(nodeRect.x, nodeRect.yMax + 5, nodeRect.width, size.y);
 				} else {
-					commentsRect = new Rect(nodeRect.xMax + 5, nodeRect.yMin, 130, nodeRect.height);
+					commentsRect = new Rect(nodeRect.xMax + 5, nodeRect.yMin, Mathf.Min(size.x, nodeRect.width), nodeRect.height);
 				}
 
 				GUI.color = new Color(1,1,1,0.6f);
 				GUI.backgroundColor = new Color(1f,1f,1f,0.2f);
-				GUI.Box(commentsRect, nodeComment, new GUIStyle("textArea"));
+				GUI.Box(commentsRect, nodeComment, "textArea");
 				GUI.backgroundColor = Color.white;
 				GUI.color = Color.white;
 			}
@@ -707,8 +816,7 @@ namespace NodeCanvas{
 		//Shows the tag label on the left of the node if it is tagged
 		void DrawNodeTag(){
 
-			var taggable = this as ITaggable;
-			if (taggable != null && !string.IsNullOrEmpty(tagName)){
+			if (!string.IsNullOrEmpty(tagName)){
 				var size = new GUIStyle("label").CalcSize(new GUIContent(tagName));
 				var tagRect = new Rect(nodeRect.x - size.x -10, nodeRect.y, size.x, size.y);
 				GUI.Label(tagRect, tagName);
@@ -720,19 +828,15 @@ namespace NodeCanvas{
 			}
 		}
 
-		//Function to pan the node recursively if need be. Called from the graph or from this
-		public void PanNode(Vector2 delta, bool panChildren){
+		//Function to pan the node recursively
+		void RecursivePanNode(Vector2 delta){
 
-			Undo.RecordObject(this, "Move");
 			nodeRect.center += delta;
 
-			if (panChildren){
-				for (int i= 0; i < outConnections.Count; i++){
-					var node = outConnections[i].targetNode;
-					if (node.ID > this.ID){
-						node.PanNode(delta, true);
-					}
-				}
+			for (int i= 0; i < outConnections.Count; i++){
+				var node = outConnections[i].targetNode;
+				if (node.ID > this.ID)
+					node.RecursivePanNode(delta);
 			}
 		}
 
@@ -740,7 +844,7 @@ namespace NodeCanvas{
 		public void ShowNodeInspectorGUI(){
 
 			Undo.RecordObject(this, "Node Inspector");
-			if (Graph.showNodeInfo){
+			if (NCPrefs.showNodeInfo){
 			
 				GUI.backgroundColor = new Color(0.8f,0.8f,1);
 				EditorGUILayout.HelpBox(nodeDescription, MessageType.None);
@@ -753,10 +857,9 @@ namespace NodeCanvas{
 				EditorUtils.TextFieldComment(customName, "Name...");
 			}
 
-			if (this is ITaggable){
-				tagName = EditorGUILayout.TextField(tagName );
-				EditorUtils.TextFieldComment(tagName, "Tag...");
-			}
+			tagName = EditorGUILayout.TextField(tagName );
+			EditorUtils.TextFieldComment(tagName, "Tag...");
+
 			GUILayout.EndHorizontal();
 
 			nodeComment = EditorGUILayout.TextField(nodeComment);
@@ -786,6 +889,64 @@ namespace NodeCanvas{
 			return newNode;
 		}
 
+
+		//Activates/Deactivates all inComming connections
+		void SetActive(bool active){
+
+			if (isChecked)
+				return;
+			
+			isChecked = true;
+
+			//just for visual feedback
+			if (!active)
+				Graph.currentSelection = null;
+
+			//disalbe all incomming
+			foreach (Connection cIn in inConnections){
+				Undo.RecordObject(cIn, "SetActive");
+				cIn.isActive = active;
+			}
+			
+			//disable all outgoing
+			foreach (Connection cOut in outConnections){
+				Undo.RecordObject(cOut, "SetActive");
+				cOut.isActive = active;
+			}
+
+			//if child is still considered active(= at least 1 incomming is active), continue else SetActive child as well
+			foreach (Node child in outConnections.Select(c => c.targetNode)){
+				
+				if (child.isActive == !active)
+					continue;
+
+				child.SetActive(active);
+			}
+
+			isChecked = false;
+		}
+
+
+		//Sorts the connections based on the child nodes and this node X position. Possible only when not in play mode
+		void SortConnectionsByPositionX(){
+			
+			if (!Application.isPlaying){
+
+				if (isChecked)
+					return;
+
+				isChecked = true;
+
+				Undo.RecordObject(this, "Re-Sort");
+				outConnections = outConnections.OrderBy(c => c.targetNode.nodeRect.center.x ).ToList();
+				foreach(Connection connection in inConnections)
+					connection.sourceNode.SortConnectionsByPositionX();
+
+				isChecked = false;
+			}
+		}
+
+
 		virtual protected void OnNodePicked(){
 
 		}
@@ -796,7 +957,7 @@ namespace NodeCanvas{
 
 		///Editor. Override to show controls within the node window
 		virtual protected void OnNodeGUI(){
-			GUILayout.Label("", GUILayout.Height(1));
+			
 		}
 
 		//Editor. Override to show controls within the inline inspector or leave it to show an automatic editor
@@ -814,19 +975,23 @@ namespace NodeCanvas{
 
 		}
 
-		//Draw the connections line from this node, to all of its children. This is the default. Override in each system's base node class.
+		//Draw the connections line from this node, to all of its children. This is the default hierarchical style. Override in each system's base node class.
 		virtual public void DrawNodeConnections(){
 
-			Event e = Event.current;
+			if (isHidden)
+				return;
+
+			var e = Event.current;
 
 			//Receive connections first
 			if (clickedPort != null && e.type == EventType.MouseUp){
 
-				var port = clickedPort;
-
 				if (nodeRect.Contains(e.mousePosition)){
-					if (graph.ConnectNode(port.parent, this, port.portIndex) != null)
+					
+					if (graph.ConnectNode(clickedPort.parent, this, clickedPort.portIndex) != null){
 						clickedPort = null;
+						e.Use();
+					}
 
 				} else {
 
@@ -834,12 +999,14 @@ namespace NodeCanvas{
 
 						var source = clickedPort.parent;
 						var index = clickedPort.portIndex;
+						var pos = e.mousePosition;						
 						clickedPort = null;
+						
 						System.Action<System.Type> Selected = delegate(System.Type type){
-							var pos = e.mousePosition;						
 							var newNode = graph.AddNewNode(type);
 							newNode.nodeRect.center = pos;
 							graph.ConnectNode(source, newNode, index);
+							newNode.SortConnectionsByPositionX();
 						};
 
 						EditorUtils.ShowTypeSelectionMenu(graph.baseNodeType, Selected);
@@ -861,10 +1028,15 @@ namespace NodeCanvas{
 					var portRect = new Rect(0, 0, 10, 10);
 					portRect.center = new Vector2(((nodeRect.width / (outConnections.Count + 1)) * (i + 0.5f)) + nodeRect.xMin, nodeRect.yMax + 6);
 					GUI.Box(portRect, "", "nodePortEmpty");
-					EditorGUIUtility.AddCursorRect(portRect, MouseCursor.ArrowPlus);
 
-					if (e.button == 0 && e.type == EventType.MouseDown && portRect.Contains(e.mousePosition))
+					if (childrenCollapsed)
+						continue;
+
+					EditorGUIUtility.AddCursorRect(portRect, MouseCursor.ArrowPlus);
+					if (e.button == 0 && e.type == EventType.MouseDown && portRect.Contains(e.mousePosition)){
 						clickedPort = new Port(i, this, portRect.center);
+						e.Use();
+					}
 				}
 			}
 
@@ -884,6 +1056,10 @@ namespace NodeCanvas{
 					var connectedPortRect = new Rect(0,0,12,12);
 					connectedPortRect.center = sourcePos;
 					GUI.Box(connectedPortRect, "", "nodePortConnected");
+			
+					if (childrenCollapsed || connection.targetNode.isHidden)
+						continue;
+
 					connection.DrawConnectionGUI(sourcePos, targetPos);
 
 					//On right click disconnect connection from the source.
@@ -896,7 +1072,7 @@ namespace NodeCanvas{
 			}
 		}
 
-		//EDITOR. Class for the nodeports
+		//Class for the nodeports GUI
 		class Port{
 
 			public int portIndex;

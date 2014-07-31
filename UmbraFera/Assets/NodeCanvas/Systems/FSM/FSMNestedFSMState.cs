@@ -15,7 +15,7 @@ namespace NodeCanvas.StateMachines{
 
 		[SerializeField]
 		private FSM _nestedFSM;
-		private bool instanceChecked;
+		private bool instantiated;
 
 		private FSM nestedFSM{
 			get {return _nestedFSM;}
@@ -26,6 +26,10 @@ namespace NodeCanvas.StateMachines{
 		public Graph nestedGraph{
 			get {return nestedFSM;}
 			set {nestedFSM = (FSM)value;}
+		}
+
+		protected override void OnAwake(){
+			CheckInstance();
 		}
 
 		protected override void Enter(){
@@ -51,10 +55,10 @@ namespace NodeCanvas.StateMachines{
 
 		private void CheckInstance(){
 
-			if (!instanceChecked && nestedFSM != null && nestedFSM.transform.parent != graph.transform){
+			if (!instantiated && nestedFSM != null && nestedFSM.transform.parent != graph.transform){
 				nestedFSM = (FSM)Instantiate(nestedFSM, transform.position, transform.rotation);
 				nestedFSM.transform.parent = graph.transform;
-				instanceChecked = true;
+				instantiated = true;
 			}
 		}
 

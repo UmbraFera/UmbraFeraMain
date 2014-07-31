@@ -82,12 +82,9 @@ namespace NodeCanvas.BehaviourTrees{
 		protected override void OnNodeGUI(){
 
 			if (isDynamic)
-				GUILayout.Label("Dynamic");
+				GUILayout.Label("<b>DYNAMIC</b>");
 			if (isRandom)
-				GUILayout.Label("Random");
-
-			if (!isDynamic && !isRandom)
-				GUILayout.Label("", GUILayout.Height(1));
+				GUILayout.Label("<b>RANDOM</b>");
 		}
 
 		#endif

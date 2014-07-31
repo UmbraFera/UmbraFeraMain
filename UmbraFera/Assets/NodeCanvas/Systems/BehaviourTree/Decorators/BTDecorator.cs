@@ -15,10 +15,6 @@ namespace NodeCanvas.BehaviourTrees{
 			get{return 1;}
 		}
 
-		public override System.Type outConnectionType{
-			get{return typeof(Connection);}
-		}
-
 		///The decorated connection object
 		protected Connection decoratedConnection{
 			get
@@ -37,14 +33,6 @@ namespace NodeCanvas.BehaviourTrees{
 					return outConnections[0].targetNode;
 				return null;			
 			}
-		}
-
-		protected override Status OnExecute(Component agent, Blackboard blackboard){
-
-			if (decoratedConnection)
-				return decoratedConnection.Execute(agent, blackboard);
-
-			return Status.Failure;
 		}
 	}
 }

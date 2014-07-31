@@ -5,10 +5,6 @@ namespace NodeCanvas.BehaviourTrees{
 	[AddComponentMenu("")]
 	abstract public class BTComposite : BTNodeBase {
 
-		public override System.Type outConnectionType{
-			get{return typeof(ConditionalConnection);}
-		}
-
 		public override int maxInConnections{
 			get{return 1;}
 		}
@@ -25,6 +21,8 @@ namespace NodeCanvas.BehaviourTrees{
 		protected override void OnContextMenu(UnityEditor.GenericMenu menu){
 
 			menu.AddItem (new GUIContent ("Convert to SubTree"), false, ContextMakeNested);
+            if (outConnections.Count > 0)
+				menu.AddItem (new GUIContent ("Delete Branch"), false, delegate{foreach(Node node in GetAllChildNodesRecursively(true)) graph.RemoveNode(node); } );
 		}		
 	
 		//TODO possibly move making nested into Node so that it's reusable in other graph systems as well
@@ -33,8 +31,8 @@ namespace NodeCanvas.BehaviourTrees{
 			if (!UnityEditor.EditorUtility.DisplayDialog("Convert to SubTree", "This will create a new SubTree out of this branch.\nThe SubTree can NOT be unpacked later on.\nAre you sure?", "Yes", "No!"))
 				return;
 
-			BTSubTree newNestedNode = graph.AddNewNode(typeof(BTSubTree)) as BTSubTree;
-			BehaviourTree newBT = (BehaviourTree)Graph.CreateNested(newNestedNode, typeof(BehaviourTree), "Nested BT");
+			var newNestedNode = (BTSubTree)graph.AddNewNode(typeof(BTSubTree));
+			var newBT = (BehaviourTree)Graph.CreateNested(newNestedNode, typeof(BehaviourTree), "Nested BT");
 
 			newNestedNode.nodeRect.center = this.nodeRect.center;
 			

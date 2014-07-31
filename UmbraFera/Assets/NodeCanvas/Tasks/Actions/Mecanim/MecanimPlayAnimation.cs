@@ -3,20 +3,15 @@ using UnityEngine;
 namespace NodeCanvas.Actions{
  
     [Name("Play Animation")]
-    [Category("Mecanim")]
-    [AgentType(typeof(Animator))]
-    public class MecanimPlayAnimation : ActionTask{
+    public class MecanimPlayAnimation : MecanimActions{
      
         public int layerIndex;
         [RequiredField]
         public string stateName;
         [SliderField(0,1)]
         public float transitTime = 0.25f;
-     
         public bool waitUntilFinish;
      
-        [GetFromAgent]
-        private Animator animator;
         private AnimatorStateInfo stateInfo;
         private bool played;
      
@@ -26,7 +21,8 @@ namespace NodeCanvas.Actions{
      
         protected override void OnExecute(){
             played = false;
-            animator.CrossFade(stateName, transitTime, layerIndex);
+            var current = animator.GetCurrentAnimatorStateInfo(layerIndex);
+            animator.CrossFade(stateName, transitTime/current.length, layerIndex);
         }
      
         protected override void OnUpdate(){

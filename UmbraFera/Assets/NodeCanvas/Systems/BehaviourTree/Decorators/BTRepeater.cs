@@ -4,6 +4,7 @@ using UnityEditor;
 
 using UnityEngine;
 using System.Collections;
+using NodeCanvas.Variables;
 
 namespace NodeCanvas.BehaviourTrees{
 
@@ -29,7 +30,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 		public RepeatTypes repeatType= RepeatTypes.RepeatTimes;
 		public RepeatUntil repeatUntil= RepeatUntil.Success;
-		public int repeatTimes = 1;
+		public BBFloat repeatTimes = new BBFloat{value = 1};
 
 		private int currentIteration = 1;
 
@@ -44,8 +45,8 @@ namespace NodeCanvas.BehaviourTrees{
 
 				if (repeatType == RepeatTypes.RepeatTimes){
 
-					repeatTimes = Mathf.Max(repeatTimes, 1);
-					if (currentIteration >= repeatTimes)
+					repeatTimes.value = Mathf.Max(repeatTimes.value, 1);
+					if (currentIteration >= repeatTimes.value)
 						return status;
 
 					currentIteration ++;
@@ -98,7 +99,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 			if (repeatType == RepeatTypes.RepeatTimes){
 
-				repeatTimes = EditorGUILayout.IntField("Times", repeatTimes);
+				repeatTimes = (BBFloat)EditorUtils.BBVariableField("Repeat Times", repeatTimes);
 
 			} else if (repeatType == RepeatTypes.RepeatUntil){
 

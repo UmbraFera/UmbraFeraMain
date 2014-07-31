@@ -7,6 +7,7 @@ namespace NodeCanvas{
 
 		Component agent {get;}
 		Blackboard blackboard {get;}
+		float elapsedTime {get;}
 
 		void SendTaskOwnerDefaults();
 		void SendEvent(string eventName);
@@ -14,9 +15,6 @@ namespace NodeCanvas{
 
 	///Denotes that the node type is auto sortable based on position on the canvas
 	public interface IAutoSortable{}
-
-	///Denotes that the class is taggable
-	public interface ITaggable{}
 
 	///Denotes that the node holds a nested graph
 	public interface INestedNode{

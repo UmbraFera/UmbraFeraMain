@@ -4,16 +4,11 @@ using NodeCanvas.Variables;
 namespace NodeCanvas.Conditions{
 
 	[Name("Check Mecanim Bool")]
-	[Category("Mecanim")]
-	[AgentType(typeof(Animator))]
-	public class MecanimCheckBool : ConditionTask {
+	public class MecanimCheckBool : MecanimConditions {
 
 		[RequiredField]
 		public string mecanimParameter;
 		public BBBool value;
-
-		[GetFromAgent]
-		private Animator animator;
 
 		protected override string info{
 			get{return "Mec.Bool '" + mecanimParameter + "' == " + value;}

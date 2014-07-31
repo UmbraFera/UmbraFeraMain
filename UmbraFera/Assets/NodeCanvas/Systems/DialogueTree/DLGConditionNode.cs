@@ -78,19 +78,8 @@ namespace NodeCanvas.DialogueTrees{
 		
 		protected override void OnNodeGUI(){
 
-			base.OnNodeGUI();
-
-			if (condition == null){
-				GUILayout.Label("No Condition");
-				return;
-			}
-
-			if (outConnections.Count == 0){
+			if (outConnections.Count == 0)
 				GUILayout.Label("Connect Outcomes");
-				return;
-			}
-
-			GUILayout.Label(condition.taskInfo);
 		}
 
 		protected override void OnNodeInspectorGUI(){

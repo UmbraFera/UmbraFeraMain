@@ -37,18 +37,16 @@ namespace NodeCanvas.Actions{
 			script = agent.GetComponent(scriptName);
 			if (script == null)
 				return "Missing Component";
-			field = script.GetType().GetField(fieldName);
+			field = script.GetType().NCGetField(fieldName);
+			if (field == null)
+				return "Missing Field Info";
 			return null;
 		}
 
 		protected override void OnExecute(){
 
-			if (field != null){
-				saveAs.selectedObjectValue = field.GetValue(script);
-				EndAction(true);
-			} else {
-				EndAction(false);
-			}
+			saveAs.objectValue = field.GetValue(script);
+			EndAction(true);
 		}
 
 		////////////////////////////////////////

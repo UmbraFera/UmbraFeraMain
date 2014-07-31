@@ -30,7 +30,7 @@ namespace NodeCanvas.Actions{
 				if (string.IsNullOrEmpty(methodName))
 					return "No Property Selected";
 
-				return (saveAs.selectedBBVariable + " = " + agentInfo + "." + methodName);
+				return string.Format("{0} = {1}.{2}", saveAs.selectedBBVariable, agentInfo, methodName);
 			}
 		}
 
@@ -39,22 +39,17 @@ namespace NodeCanvas.Actions{
 			script = agent.GetComponent(scriptName);
 			if (script == null)
 				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "' . Did the agent changed at runtime?";
-			method = script.GetType().GetMethod(methodName, System.Type.EmptyTypes);
+			method = script.GetType().NCGetMethod(methodName);
+			if (method == null)
+				return "Missing Property Method Info";
 			return null;
 		}
 
 		//do it by invoking method
 		protected override void OnExecute(){
 			
-			if (method != null){
-				
-				saveAs.selectedObjectValue = method.Invoke(script, null);
-				EndAction(true);
-			
-			} else {
-
-				EndAction(false);
-			}
+			saveAs.objectValue = method.Invoke(script, null);
+			EndAction(true);
 		}
 
 		////////////////////////////////////////
@@ -77,13 +72,13 @@ namespace NodeCanvas.Actions{
 
 			if (GUILayout.Button("Select Property")){
 
-				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, saveAs.availableTypes, new List<System.Type>(), delegate(MethodInfo method){
+				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, saveAs.availableTypes, null, delegate(MethodInfo method){
 					scriptName = method.ReflectedType.Name;
 					methodName = method.Name;
 					saveAs.selectedType = method.ReturnType;
 					if (Application.isPlaying)
 						OnInit();
-				}, true );
+				}, 0, true );
 			}
 
 			if (!string.IsNullOrEmpty(methodName)){

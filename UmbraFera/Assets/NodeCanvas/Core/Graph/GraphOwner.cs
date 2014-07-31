@@ -38,19 +38,24 @@ namespace NodeCanvas{
 			get {return behaviour != null? behaviour.isPaused : false;}
 		}
 
+		///The time is seconds the behaviour is running
+		public float elapsedTime{
+			get {return behaviour != null? behaviour.elapsedTime : 0;}
+		}
+
 		///The blackboard that the assigned behaviour will be Started with
 		public Blackboard blackboard{
 			get {return _blackboard;}
 			set {_blackboard = value; if (behaviour != null) behaviour.blackboard = value;}
 		}
 
-		///The current behaviour assigned
+		///The current behaviour Graph assigned
 		abstract public Graph behaviour{ get; set; }
 		///The Graph type this Owner should be assigned
 		abstract public Type graphType{ get; }
 
 		[Obsolete("Use 'onEnable = GraphOwer.EnableAction.StartBehaviour")]
-		public bool executeOnStart{	get {return onEnable == EnableAction.StartBehaviour;} set {onEnable = EnableAction.StartBehaviour;}	}
+		public bool executeOnStart{	get {return onEnable == EnableAction.StartBehaviour;} set {onEnable = value? EnableAction.StartBehaviour:EnableAction.DoNothing;}	}
 		[Obsolete("Use 'behaviour' instead")]
 		public Graph graph {get{return behaviour;} set {behaviour = value;}}
 		[Obsolete("Use 'StartBehaviour' instead")]

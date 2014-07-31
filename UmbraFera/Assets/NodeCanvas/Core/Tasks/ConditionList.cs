@@ -14,7 +14,7 @@ namespace NodeCanvas{
 		public List<ConditionTask> conditions = new List<ConditionTask>();
 		public bool allSuccessRequired = true;
 
-		override protected string info{
+		protected override string info{
 			get
 			{
 				string finalText = conditions.Count != 0? "" : "No Conditions";
@@ -22,19 +22,25 @@ namespace NodeCanvas{
 					finalText += "<b>(" + (allSuccessRequired? "ALL True" : "ANY True") + ")</b>\n";
 
 				for (int i= 0; i < conditions.Count; i++){
-					finalText += conditions[i].taskInfo + (i == conditions.Count -1? "" : "\n" );
+					if (conditions[i].isActive)
+						finalText += conditions[i].taskInfo + (i == conditions.Count -1? "" : "\n" );
 				}
 				return finalText;
 			}
 		}
 
-		override protected bool OnCheck(){
+		protected override bool OnCheck(){
 
 			int succeedChecks = 0;
 
-			foreach (ConditionTask con in conditions){
+			foreach (ConditionTask condition in conditions){
 
-				if (con.CheckCondition(agent, blackboard)){
+				if (!condition.isActive){
+					succeedChecks ++;
+					continue;
+				}
+
+				if (condition.CheckCondition(agent, blackboard)){
 
 					if (!allSuccessRequired)
 						return true;
@@ -46,16 +52,24 @@ namespace NodeCanvas{
 			return succeedChecks == conditions.Count;
 		}
 
+		protected override void OnGizmos(){
+			foreach (ConditionTask condition in conditions)
+				condition.DrawGizmos();
+		}
+
+		protected override void OnGizmosSelected(){
+			foreach (ConditionTask condition in conditions)
+				condition.DrawGizmosSelected();
+		}
+
 		////////////////////////////////////////
 		///////////GUI AND EDITOR STUFF/////////
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 
-		ConditionTask currentViewCondition;
+		private ConditionTask currentViewCondition;
 
-		protected override void OnValidate(){
-
-			base.OnValidate();
+		protected override void OnEditorValidate(){
 			for (int i = 0; i < conditions.Count; i++){
 				if (conditions[i] == null)
 					conditions.RemoveAt(i);
@@ -63,13 +77,9 @@ namespace NodeCanvas{
 		}
 
 		private void OnDestroy(){
-
 			foreach(ConditionTask condition in conditions){
 				var c = condition;
-				EditorApplication.delayCall += ()=>
-				{
-					if (c) DestroyImmediate(c, true);
-				};
+				EditorApplication.delayCall += ()=> { if (c) DestroyImmediate(c, true); };
 			}
 		}
 
@@ -78,18 +88,18 @@ namespace NodeCanvas{
 			if (this == null)
 				return null;
 
-			ConditionList copiedList = (ConditionList)go.AddComponent<ConditionList>();
-			Undo.RegisterCreatedObjectUndo(copiedList, "Copy List");
-			Undo.RecordObject(copiedList, "Copy List");
-			UnityEditor.EditorUtility.CopySerialized(this, copiedList);
-			copiedList.conditions.Clear();
+			var newList = (ConditionList)go.AddComponent<ConditionList>();
+			Undo.RegisterCreatedObjectUndo(newList, "Copy List");
+			Undo.RecordObject(newList, "Copy List");
+			UnityEditor.EditorUtility.CopySerialized(this, newList);
+			newList.conditions.Clear();
 
 			foreach (ConditionTask condition in conditions){
 				var copiedCondition = condition.CopyTo(go);
-				copiedList.AddCondition(copiedCondition as ConditionTask);
+				newList.AddCondition(copiedCondition as ConditionTask);
 			}
 
-			return copiedList;
+			return newList;
 		}
 
 		override protected void OnTaskInspectorGUI(){
@@ -108,7 +118,7 @@ namespace NodeCanvas{
 
 			EditorUtils.TaskSelectionButton(gameObject, typeof(ConditionTask), delegate(Task c){ AddCondition((ConditionTask)c) ;});
 
-			//Check for possibly removed components
+			//Check for possibly removed conditions
 			foreach (ConditionTask condition in conditions.ToArray()){
 				if (condition == null)
 					conditions.Remove(condition);
@@ -118,31 +128,33 @@ namespace NodeCanvas{
 				EditorGUILayout.HelpBox("No Conditions", MessageType.None);
 				return;
 			}
+			
+			EditorUtils.ReorderableList(conditions, delegate(int i){
 
-			foreach (ConditionTask con in conditions.ToArray()){
-
-				GUI.backgroundColor = new Color(1, 1, 1, 0.25f);
+				var condition = conditions[i];
+				GUI.color = new Color(1, 1, 1, 0.25f);
 				GUILayout.BeginHorizontal("box");
-					
-				GUI.color = con == currentViewCondition? Color.yellow : Color.white;
-				GUILayout.Label(con.taskInfo);
-				GUI.color = Color.white;
+				GUI.color = condition.isActive? new Color(1,1,1,0.8f) : new Color(1,1,1,0.25f);
 
-				var e = Event.current;
-				var lastRect = GUILayoutUtility.GetLastRect();
-				EditorGUIUtility.AddCursorRect(lastRect, MouseCursor.Link);
-				if (e.button == 0 && e.type == EventType.MouseUp && lastRect.Contains(e.mousePosition)){
-					currentViewCondition = currentViewCondition == con? null : con;
-					e.Use();
-				}
-				
+				Undo.RecordObject(condition, "Mute");
+				condition.isActive = EditorGUILayout.Toggle(condition.isActive, GUILayout.Width(18));
+
+				GUI.backgroundColor = condition == currentViewCondition? Color.grey : Color.white;
+				if (GUILayout.Button(EditorUtils.viewIcon, GUILayout.Width(25), GUILayout.Height(18)))
+					currentViewCondition = condition == currentViewCondition? null : condition;
+				EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
+				GUI.backgroundColor = Color.white;
+
+				GUILayout.Label(condition.taskInfo);
 				if (GUILayout.Button("X", GUILayout.MaxWidth(20))){
 					Undo.RecordObject(this, "List Remove Task");
-					conditions.Remove(con);
-					Undo.DestroyObjectImmediate(con);
+					conditions.Remove(condition);
+					Undo.DestroyObjectImmediate(condition);
 				}
+				EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
 				GUILayout.EndHorizontal();
-			}
+				GUI.color = Color.white;
+			});
 
 			EditorUtils.Separator();
 

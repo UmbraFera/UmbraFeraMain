@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
 using NodeCanvas.Variables;
 
 namespace NodeCanvas.Conditions{
@@ -14,7 +15,8 @@ namespace NodeCanvas.Conditions{
 	[AgentType(typeof(Transform))]
 	public class CheckFunction : ConditionTask {
 
-		public BBBool boolCheck = new BBBool{value = true};
+		public BBVariableSet paramValue1 = new BBVariableSet();
+		public BBVariableSet checkSet = new BBVariableSet();
 
 		[SerializeField]
 		private string methodName;
@@ -30,7 +32,9 @@ namespace NodeCanvas.Conditions{
 				if (string.IsNullOrEmpty(methodName))
 					return "No Method Selected";
 
-				return string.Format("{0}.{1}", agentInfo, methodName);
+				string paramInfo = "";
+				paramInfo += paramValue1.selectedType != null? paramValue1.selectedBBVariable.ToString() : "";
+				return string.Format("{0}.{1}({2}){3}", agentInfo, methodName, paramInfo, checkSet.selectedType == typeof(bool)? "" : " == " + checkSet.selectedBBVariable.ToString());
 			}
 		}
 
@@ -38,24 +42,37 @@ namespace NodeCanvas.Conditions{
 		protected override string OnInit(){
 			script = agent.GetComponent(scriptName);
 			if (script == null)
-				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "' . Did the agent changed at runtime?";
-			method = script.GetType().GetMethod(methodName, System.Type.EmptyTypes);
+				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "'";
+
+			var paramTypes = new List<System.Type>();
+			if (paramValue1.selectedType != null)
+				paramTypes.Add(paramValue1.selectedType);
+
+			method = script.GetType().NCGetMethod(methodName, paramTypes.ToArray());
+
+			if (method == null)
+				return "Missing Method Info";
+			
 			return null;
 		}
 
 		//do it by invoking method
 		protected override bool OnCheck(){
 
-			if (method != null)
-				return (bool)method.Invoke(script, null) == boolCheck.value;
+			object[] args = null;
+			if (paramValue1.selectedType != null)
+				args = new object[]{paramValue1.objectValue};
 
-			return false;
+			return method.Invoke(script, args).Equals( checkSet.objectValue );
 		}
 
 		////////////////////////////////////////
 		///////////GUI AND EDITOR STUFF/////////
 		////////////////////////////////////////
 		#if UNITY_EDITOR
+
+		[SerializeField]
+		private List<string> paramNames = new List<string>{"Param1"}; //init for update
 		
 		protected override void OnTaskInspectorGUI(){
 
@@ -67,25 +84,36 @@ namespace NodeCanvas.Conditions{
 			if (agent.GetComponent(scriptName) == null){
 				scriptName = null;
 				methodName = null;
+				paramValue1.selectedType = null;
 			}
 
 			if (GUILayout.Button("Select Method")){
-				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, new List<System.Type>{typeof(bool)}, new List<System.Type>(), delegate(MethodInfo method){
+				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, checkSet.availableTypes, paramValue1.availableTypes, delegate(MethodInfo method){
 					scriptName = method.ReflectedType.Name;
 					methodName = method.Name;
+					var parameters = method.GetParameters();
+					paramNames = parameters.Select(p => p.Name).ToList();
+					paramValue1.selectedType = parameters.Length >= 1? parameters[0].ParameterType : null;
+					checkSet.selectedType = method.ReturnType;
 					if (Application.isPlaying)
 						OnInit();
-				});
+				}, 1, false);
 			}
 
 			if (!string.IsNullOrEmpty(methodName)){
 				GUILayout.BeginVertical("box");
 				EditorGUILayout.LabelField("Selected Component", scriptName);
 				EditorGUILayout.LabelField("Selected Method", methodName);
+				if (paramValue1.selectedType != null)
+					EditorGUILayout.LabelField(paramNames[0], EditorUtils.TypeName(paramValue1.selectedType));
 				GUILayout.EndVertical();
 			}
 
-			EditorUtils.BBVariableField("Check Bool", boolCheck);
+			if (paramValue1.selectedType != null)
+				EditorUtils.BBVariableField(paramNames[0], paramValue1.selectedBBVariable);
+
+			if (checkSet.selectedType != null)
+				EditorUtils.BBVariableField("Is Equal To", checkSet.selectedBBVariable);
 		}
 
 		#endif

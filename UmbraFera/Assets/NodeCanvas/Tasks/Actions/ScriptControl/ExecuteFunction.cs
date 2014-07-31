@@ -3,6 +3,7 @@ using UnityEditor;
 #endif
 
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
@@ -11,7 +12,7 @@ using NodeCanvas.Variables;
 namespace NodeCanvas.Actions{
 
 	[Category("✫ Script Control")]
-	[Description("Execute a function on a script, of up to 3 parameters and save the return if any")]
+	[Description("Execute a function on a script, of up to 3 parameters and save the return if any. If function is an IEnumerator it will start a coroutine and the action will run for as long as the coroutine is running. If the action stops, so will the coroutine.")]
 	[AgentType(typeof(Transform))]
 	public class ExecuteFunction : ActionTask {
 
@@ -27,8 +28,8 @@ namespace NodeCanvas.Actions{
 
 		private Component script;
 		private MethodInfo method;
-		private List<System.Type> paramTypes;
 		private int paramCount;
+		private bool routineRunning;
 
 		protected override string info{
 			get
@@ -40,61 +41,77 @@ namespace NodeCanvas.Actions{
 				paramInfo += paramValue1.selectedType != null? paramValue1.selectedBBVariable.ToString() : "";
 				paramInfo += paramValue2.selectedType != null? ", " + paramValue2.selectedBBVariable.ToString() : "";
 				paramInfo += paramValue3.selectedType != null? ", " + paramValue3.selectedBBVariable.ToString() : "";
-				return (returnValue.selectedType != null? returnValue.selectedBBVariable.ToString() + "= ": "") + agentInfo + "." + methodName + "(" + paramInfo + ")" ;
+				return (returnValue.selectedType != null && !returnValue.selectedBBVariable.isNone? returnValue.selectedBBVariable.ToString() + "= ": "") + agentInfo + "." + methodName + "(" + paramInfo + ")" ;
 			}
 		}
 
 		//store the method info on init for performance
 		protected override string OnInit(){
+
 			script = agent.GetComponent(scriptName);
 			if (script == null)
-				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "' . Did the agent changed at runtime?";
+				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "'";
 			
-			paramCount = 0;
-			paramTypes = new List<System.Type>();
-			if (paramValue1.selectedType == null)
-				paramTypes = System.Type.EmptyTypes.ToList();
+			var paramTypes = new List<System.Type>();
+
 			if (paramValue1.selectedType != null){
 				paramTypes.Add(paramValue1.selectedType);
-				paramCount++;
-			}
-			if (paramValue2.selectedType != null){
-				paramTypes.Add(paramValue2.selectedType);
-				paramCount++;
-			}
-			if (paramValue3.selectedType != null){
-				paramTypes.Add(paramValue3.selectedType);
-				paramCount++;
+
+				if (paramValue2.selectedType != null){
+					paramTypes.Add(paramValue2.selectedType);
+					
+					if (paramValue3.selectedType != null)
+						paramTypes.Add(paramValue3.selectedType);
+				}
 			}
 
-			method = script.GetType().GetMethod(methodName, paramTypes.ToArray());
+			paramCount = paramTypes.Count;
+			method = script.GetType().NCGetMethod(methodName, paramTypes.ToArray());
+
+			if (method == null)
+				return "Method not found";
+
 			return null;
 		}
 
 		//do it by invoking method
 		protected override void OnExecute(){
 
-			if (method != null){
-
-				object o = null;
-				if (paramCount == 0)
-					o = method.Invoke(script, null);
-				else if (paramCount == 1)
-					o = method.Invoke(script, new object[]{paramValue1.selectedObjectValue});
+			object[] args = null;
+			if (paramCount > 0){
+				if (paramCount == 1)
+					args = new object[]{paramValue1.objectValue};
 				else if (paramCount == 2)
-					o = method.Invoke(script, new object[]{paramValue1.selectedObjectValue, paramValue2.selectedObjectValue});
+					args = new object[]{paramValue1.objectValue, paramValue2.objectValue};
 				else if (paramCount == 3)
-					o = method.Invoke(script, new object[]{paramValue1.selectedObjectValue, paramValue2.selectedObjectValue, paramValue3.selectedObjectValue});
-
-				if (method.ReturnType != typeof(void))
-					returnValue.selectedObjectValue = o;
-
-				EndAction(true);
-			
-			} else {
-
-				EndAction(false);
+					args = new object[]{paramValue1.objectValue, paramValue2.objectValue, paramValue3.objectValue};
 			}
+
+			if (method.ReturnType == typeof(IEnumerator)){
+				routineRunning = true;
+				StartCoroutine( InternalCoroutine((IEnumerator)method.Invoke(script, args)) );
+			} else {
+				returnValue.objectValue = method.Invoke(script, args);
+				EndAction(true);
+			}
+		}
+
+		protected override void OnStop(){
+			routineRunning = false;
+		}
+
+
+		IEnumerator InternalCoroutine(IEnumerator routine){
+
+			while(routine.MoveNext()){
+				
+				yield return routine.Current;
+
+				if (routineRunning == false)
+					yield break;
+			}
+
+			EndAction(true);
 		}
 
 		////////////////////////////////////////
@@ -104,6 +121,7 @@ namespace NodeCanvas.Actions{
 		
 		[SerializeField]
 		private List<string> paramNames = new List<string>{"Param1","Param2","Param3"}; //init for update
+		private bool isIEnumerator;
 
 		protected override void OnTaskInspectorGUI(){
 
@@ -120,21 +138,32 @@ namespace NodeCanvas.Actions{
 
 			if (GUILayout.Button("Select Method")){
 				
-				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, returnValue.availableTypes, paramValue1.availableTypes, delegate(MethodInfo method){
+				var returnTypes = returnValue.availableTypes;
+				returnTypes.Add(typeof(void));
+				returnTypes.Add(typeof(IEnumerator));
+				returnTypes.Add(typeof(Coroutine));
+				var paramTypes = paramValue1.availableTypes;
+
+				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, returnTypes, paramTypes, delegate(MethodInfo method){
 					scriptName = method.ReflectedType.Name;
 					methodName = method.Name;
-					paramNames = new List<string>();
 					var parameters = method.GetParameters();
-					foreach (ParameterInfo param in parameters)
-						paramNames.Add(param.Name);
-
+					paramNames = parameters.Select(p => p.Name).ToList();
 					paramValue1.selectedType = parameters.Length >= 1? parameters[0].ParameterType : null;
 					paramValue2.selectedType = parameters.Length >= 2? parameters[1].ParameterType : null;
 					paramValue3.selectedType = parameters.Length >= 3? parameters[2].ParameterType : null;
-					returnValue.selectedType = method.ReturnType == typeof(void)? null : method.ReturnType;
+					if (method.ReturnType == typeof(IEnumerator) || method.ReturnType == typeof(void) || method.ReturnType == typeof(Coroutine)){
+						returnValue.selectedType = null;
+					} else {
+						returnValue.selectedType = method.ReturnType;
+					}
+
+					//for gui
+					isIEnumerator = method.ReturnType == typeof(IEnumerator);
+
 					if (Application.isPlaying)
 						OnInit();
-				});
+				}, 3, false);
 			}
 
 			if (!string.IsNullOrEmpty(methodName)){
@@ -149,6 +178,10 @@ namespace NodeCanvas.Actions{
 					EditorGUILayout.LabelField(paramNames[2], EditorUtils.TypeName(paramValue3.selectedType));
 				if (returnValue.selectedType != null)
 					EditorGUILayout.LabelField("Return Type", EditorUtils.TypeName(returnValue.selectedType));
+				
+				if (isIEnumerator)
+					GUILayout.Label("<b>This will execute as a Coroutine</b>");
+
 				GUILayout.EndVertical();
 			}
 

@@ -10,6 +10,7 @@ namespace NodeCanvas.Conditions{
 
 		[RequiredField]
 		public BBGameObject CheckTarget;
+		[SliderField(1, 180)]
 		public float AngleToCheck = 70f;
 
 		protected override string info{

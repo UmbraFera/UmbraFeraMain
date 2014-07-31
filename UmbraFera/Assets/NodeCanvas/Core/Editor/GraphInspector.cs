@@ -5,7 +5,7 @@ using NodeCanvas;
 
 namespace NodeCanvasEditor{
 
-    [CustomEditor(typeof(Graph))]
+    [CustomEditor(typeof(Graph), true)]
     public class GraphInspector : Editor {
 
         private Graph graph{
@@ -45,7 +45,7 @@ namespace NodeCanvasEditor{
 
             bool isPrefab= (PrefabUtility.GetPrefabType(graph) == PrefabType.Prefab);
             if (isPrefab)
-                EditorGUILayout.HelpBox("Editing is not allowed when prefab asset is selected. Please place the prefab in a scene, edit and apply it", MessageType.Warning);
+                EditorGUILayout.HelpBox("Editing is not allowed when prefab asset is selected. Please place the prefab in a scene, edit and apply it", MessageType.Info);
             return isPrefab;
         }
 

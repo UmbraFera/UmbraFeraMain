@@ -14,7 +14,7 @@ namespace NodeCanvas.Conditions{
 	[AgentType(typeof(Transform))]
 	public class CheckProperty : ConditionTask {
 
-		public BBBool boolCheck = new BBBool{value = true};
+		public BBVariableSet checkSet = new BBVariableSet();
 
 		[SerializeField]
 		private string methodName;
@@ -29,8 +29,7 @@ namespace NodeCanvas.Conditions{
 			{
 				if (string.IsNullOrEmpty(methodName))
 					return "No Method Selected";
-
-				return string.Format("{0}.{1}", agentInfo, methodName);
+				return string.Format("{0}.{1}{2}", agentInfo, methodName, checkSet.selectedType == typeof(bool)? "" : " == " + checkSet.ToString());
 			}
 		}
 
@@ -38,18 +37,17 @@ namespace NodeCanvas.Conditions{
 		protected override string OnInit(){
 			script = agent.GetComponent(scriptName);
 			if (script == null)
-				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "' . Did the agent changed at runtime?";
-			method = script.GetType().GetMethod(methodName, System.Type.EmptyTypes);
+				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "'";
+			method = script.GetType().NCGetMethod(methodName);
+			if (method == null)
+				return "Missing Property Method Info";
 			return null;
 		}
 
 		//do it by invoking method
 		protected override bool OnCheck(){
 
-			if (method != null)
-				return (bool)method.Invoke(script, null) == boolCheck.value;
-
-			return false;
+			return method.Invoke(script, null).Equals( checkSet.objectValue );
 		}
 
 		////////////////////////////////////////
@@ -70,12 +68,13 @@ namespace NodeCanvas.Conditions{
 			}
 
 			if (GUILayout.Button("Select Property")){
-				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, new List<System.Type>{typeof(bool)}, new List<System.Type>(), delegate(MethodInfo method){
+				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, checkSet.availableTypes, null, delegate(MethodInfo method){
 					scriptName = method.ReflectedType.Name;
 					methodName = method.Name;
+					checkSet.selectedType = method.ReturnType;
 					if (Application.isPlaying)
 						OnInit();
-				}, true);
+				}, 0, true);
 			}
 
 			if (!string.IsNullOrEmpty(methodName)){
@@ -85,7 +84,8 @@ namespace NodeCanvas.Conditions{
 				GUILayout.EndVertical();
 			}
 
-			EditorUtils.BBVariableField("Check Bool", boolCheck);
+			if (checkSet.selectedType != null)
+				EditorUtils.BBVariableField("Is Equal To", checkSet.selectedBBVariable);
 		}
 
 		#endif

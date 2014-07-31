@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace NodeCanvas.BehaviourTrees{
 
+	[AddComponentMenu("")]
 	[Category("Mutators (beta)")]
 	[Name("Toggler")]
 	[Description("Enable, Disable or Toggle one or more nodes with provided tag. In practise their incomming connections are disabled\nBeta Feature!")]
@@ -29,17 +30,17 @@ namespace NodeCanvas.BehaviourTrees{
 
 				if (mode == Mode.Enable){
 					foreach (Node node in targetNodes)
-						node.inConnections[0].isDisabled = false;
+						node.inConnections[0].isActive = true;
 				}
 
 				if (mode == Mode.Disable){
 					foreach (Node node in targetNodes)
-						node.inConnections[0].isDisabled = true;
+						node.inConnections[0].isActive = false;
 				}
 
 				if (mode == Mode.Toggle){
 					foreach (Node node in targetNodes)
-						node.inConnections[0].isDisabled = !node.inConnections[0].isDisabled;
+						node.inConnections[0].isActive = !node.inConnections[0].isActive;
 				}
 
 				return Status.Success;

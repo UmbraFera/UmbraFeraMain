@@ -4,9 +4,7 @@ using NodeCanvas.Variables;
 namespace NodeCanvas.Actions{
 
 	[Name("Set Mecanim Float")]
-	[Category("Mecanim")]
-	[AgentType(typeof(Animator))]
-	public class MecanimSetFloat : ActionTask{
+	public class MecanimSetFloat : MecanimActions{
 
 		[RequiredField]
 		public string MecanimParameter;
@@ -15,9 +13,6 @@ namespace NodeCanvas.Actions{
 		public float TransitTime= 0.25f;
 
 		private float currentValue;
-
-		[GetFromAgent]
-		private Animator animator;
 
 		protected override string info{
 			get {return "Mec.SetFloat '" + MecanimParameter + "' to " + SetTo.ToString();}

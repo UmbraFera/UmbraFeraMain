@@ -17,15 +17,14 @@ namespace NodeCanvas.Conditions{
 
 		protected override bool OnCheck(){
 
-			if (currentTime < timeout.value){
-
-				if (currentTime == 0)
-					StartCoroutine(Count());
-			
-				return false;
+			if (currentTime == 0){
+				StopCoroutine("Count");
+				StartCoroutine("Count");
 			}
 
-			currentTime = 0;
+			if (currentTime < timeout.value)
+				return false;
+
 			return true;
 		}
 
@@ -35,6 +34,7 @@ namespace NodeCanvas.Conditions{
 				currentTime += Time.deltaTime;
 				yield return null;
 			}
+			currentTime = 0;
 		}
 	}
 }

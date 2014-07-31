@@ -49,7 +49,7 @@ namespace NodeCanvas{
 		///To be used if and when want to just check the connection without execution, since OnExecute this is called as well to determine return status.
 		virtual public bool CheckCondition(Component agent, Blackboard blackboard){
 
-			if ( !isDisabled && (!condition || condition.CheckCondition(agent, blackboard) ) )
+			if ( isActive && (!condition || condition.CheckCondition(agent, blackboard) ) )
 				return true;
 
 			connectionStatus = Status.Failure;
@@ -68,7 +68,7 @@ namespace NodeCanvas{
 
 			var e = Event.current;
 
-			var textToShow= condition? condition.taskInfo : "No Condition";
+			var textToShow = "<size=9>" + (condition? condition.taskInfo : "No Condition") + "</size>";
 			textToShow = _showConditionsGUI? textToShow : (condition? "-||-" : "---");
 
 			var finalSize= new GUIStyle("Box").CalcSize(new GUIContent(textToShow));

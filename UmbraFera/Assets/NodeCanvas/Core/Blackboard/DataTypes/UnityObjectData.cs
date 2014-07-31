@@ -15,7 +15,7 @@ namespace NodeCanvas.Variables{
 			set
 			{
 				_typeName = value.AssemblyQualifiedName;
-				if (this.value != null && !value.IsAssignableFrom(this.value.GetType()))
+				if (this.value != null && !value.NCIsAssignableFrom(this.value.GetType()))
 					this.value = null;
 			}
 		}
@@ -29,7 +29,7 @@ namespace NodeCanvas.Variables{
 			set
 			{
 				this.value = (Object)value;
-				if (value != null && !type.IsAssignableFrom(value.GetType()))
+				if (value != null && !type.NCIsAssignableFrom(value.GetType()))
 					type = value.GetType();
 			}
 		}
@@ -52,7 +52,7 @@ namespace NodeCanvas.Variables{
 
 			value = UnityEditor.EditorGUILayout.ObjectField(value, varType, true, GUILayout.MaxWidth(90), GUILayout.ExpandWidth(true)) as Object;
 
-			if (GUILayout.Button("", GUILayout.Width(10), GUILayout.Height(14))){
+			if (GUILayout.Button("T", GUILayout.Width(10), GUILayout.Height(14))){
 				var menu = new UnityEditor.GenericMenu();
 				menu.AddItem(new GUIContent("Object"), false, Selected, typeof(Object));
 				menu.AddItem(new GUIContent("Component"), false, Selected, typeof(Component));

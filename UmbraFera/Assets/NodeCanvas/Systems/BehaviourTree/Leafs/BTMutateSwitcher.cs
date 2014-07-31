@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace NodeCanvas.BehaviourTrees{
 
+	[AddComponentMenu("")]
 	[Category("Mutators (beta)")]
 	[Name("Switcher")]
 	[Description("Switch the root node of the behaviour tree to a new one defined by tag\nBeta Feature!")]

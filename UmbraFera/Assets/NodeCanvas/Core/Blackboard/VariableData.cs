@@ -4,38 +4,53 @@ using System.Collections;
 
 namespace NodeCanvas.Variables{
 	
-	///Variables are mostly stored in Blackboard. Derived classes of this store the correct type respectively depending on the class
+	///Variables are mostly stored in Blackboard. Derived classes of this store the correct type respectively in a public value named variable
 	abstract public class VariableData : MonoBehaviour{
 
 		public string dataName;
+		public System.Action<string, object> onValueChagned;
 
 		private System.Type _type;
 		private FieldInfo _valueField;
+		private object currentValue;
+
+		new public string name{
+			get {return dataName;}
+		}
 
 		///The Type this Variable holds
 		virtual public System.Type varType{
 			get
 			{
 				if (_type == null)
-					_type = GetType().GetField("value").FieldType;
+					_type = GetType().NCGetField("value").FieldType;
 				return _type;
 			}
 		}
 
-		///The System.Object value of the Variable object
+		///The System.Object value of the contained variable
 		virtual public object objectValue{
 			get
 			{
 				if (_valueField == null)
-					_valueField = GetType().GetField("value");
+					_valueField = GetType().NCGetField("value");
 				return _valueField.GetValue(this);
 			}
 			set
 			{
-				if (_valueField == null)
-					_valueField = GetType().GetField("value");
-				_valueField.SetValue(this, value);
+				if (currentValue != value){
+					if (_valueField == null)
+						_valueField = GetType().NCGetField("value");
+					_valueField.SetValue(this, value);
+					currentValue = value;
+					OnValueChanged(value);
+				}
 			}
+		}
+
+		protected void OnValueChanged(object value){
+			if (onValueChagned != null)
+				onValueChagned(dataName, value);
 		}
 
 		//Used when saving to get the object information
@@ -76,12 +91,13 @@ namespace NodeCanvas.Variables{
 
 			} else if (!varType.IsValueType){
 
-				var isList = typeof(IList).IsAssignableFrom(varType) && field.GetValue(this) != null;
+				var isList = typeof(IList).IsAssignableFrom(varType) && field.GetValue(this) != null && !varType.IsArray;
 				if (GUILayout.Button("(" + EditorUtils.TypeName(varType) + ")" + (isList? (field.GetValue(this) as IList).Count.ToString() : ""), GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true)))
 					NodeCanvasEditor.PopObjectEditor.Show(field.GetValue(this), varType);
 			
 			} else {
 
+				//objectValue = EditorUtils.GenericField(null, objectValue, objectValue.GetType());
 				GUILayout.Label("Can't show");
 			}
 		}

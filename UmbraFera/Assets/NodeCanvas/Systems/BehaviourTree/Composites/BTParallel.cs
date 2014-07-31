@@ -24,10 +24,8 @@ namespace NodeCanvas.BehaviourTrees{
 
 			for ( int i= 0; i < outConnections.Count; i++){
 
-				if (!isDynamic){
-					if (finishedConnections.Contains(outConnections[i]))
-						continue;
-				}
+				if (!isDynamic && finishedConnections.Contains(outConnections[i]))
+					continue;
 
 				status = outConnections[i].Execute(agent, blackboard);
 
@@ -74,7 +72,7 @@ namespace NodeCanvas.BehaviourTrees{
 		
 		protected override void OnNodeGUI(){
 
-			GUILayout.Label(policy.ToString());
+			GUILayout.Label( (isDynamic? "<b>DYNAMIC</b>\n" : "") + policy.ToString());
 		}
 
 		#endif

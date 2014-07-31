@@ -2,15 +2,10 @@
 
 namespace NodeCanvas.Conditions{
 
-	[Category("Mecanim")]
 	[Name("Is In Transition")]
-	[AgentType(typeof(Animator))]
-	public class MecanimIsInTransition : ConditionTask {
+	public class MecanimIsInTransition : MecanimConditions {
 
 		public int layerIndex;
-
-		[GetFromAgent]
-		Animator animator;
 
 		protected override string info{
 			get {return "Mec.Is In Transition";}

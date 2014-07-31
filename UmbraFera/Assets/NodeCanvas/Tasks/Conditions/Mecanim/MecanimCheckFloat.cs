@@ -4,9 +4,7 @@ using NodeCanvas.Variables;
 namespace NodeCanvas.Conditions{
 
 	[Name("Check Mecanim Float")]
-	[Category("Mecanim")]
-	[AgentType(typeof(Animator))]
-	public class MecanimCheckFloat : ConditionTask {
+	public class MecanimCheckFloat : MecanimConditions {
 
 		public enum ComparisonTypes{
 			EqualTo,
@@ -18,9 +16,6 @@ namespace NodeCanvas.Conditions{
 		public string mecanimParameter;
 		public ComparisonTypes comparison = ComparisonTypes.EqualTo;
 		public BBFloat value;
-
-		[GetFromAgent]
-		private Animator animator;
 
 		protected override string info{
 			get

@@ -5,6 +5,7 @@ namespace NodeCanvas.Actions{
 
 	[Category("Movement")]
 	[AgentType(typeof(NavMeshAgent))]
+	[Description("Move randomly between various game object positions taken from the list provided")]
 	public class MoveToFromList : ActionTask{
 
 		[RequiredField]
@@ -12,7 +13,7 @@ namespace NodeCanvas.Actions{
 		public BBFloat speed = new BBFloat{value = 3};
 		public float keepDistance = 0.1f;
 
-		private int randomIndex;
+		private int index;
 		private Vector3 lastRequest;
 
 		//for faster acccess
@@ -26,14 +27,14 @@ namespace NodeCanvas.Actions{
 
 		protected override void OnExecute(){
 
-			int newValue = Random.Range(0, targetList.value.Count);
-			while(newValue == randomIndex)
-				newValue = Random.Range(0, targetList.value.Count);
+			int newIndex = Random.Range(0, targetList.value.Count);
+			while(newIndex == index)
+				newIndex = Random.Range(0, targetList.value.Count);
+			index = newIndex;
 
-			randomIndex = newValue;
-			var targetGo = targetList.value[randomIndex];
+			var targetGo = targetList.value[index];
 			if (targetGo == null){
-				Debug.Log("List's game object is null on MoveToFromList Action");
+				Debug.LogWarning("List's game object is null on MoveToFromList Action");
 				EndAction(false);
 				return;
 			}
@@ -55,7 +56,7 @@ namespace NodeCanvas.Actions{
 
 		void Go(){
 
-			var targetPos = targetList.value[randomIndex].transform.position;
+			var targetPos = targetList.value[index].transform.position;
 			
 			if (lastRequest != targetPos){
 				if ( !navAgent.SetDestination( targetPos) ){

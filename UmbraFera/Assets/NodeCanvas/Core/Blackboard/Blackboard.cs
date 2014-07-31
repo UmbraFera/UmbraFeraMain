@@ -1,12 +1,15 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using UnityEditor;
+#endif
+
+#if !NETFX_CORE && !UNITY_WP8
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 #endif
 
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.IO;
 using System.Linq;
 using System;
 using NodeCanvas.Variables;
@@ -17,24 +20,18 @@ namespace NodeCanvas{
 	[AddComponentMenu("NodeCanvas/Blackboard")]
 	///Blackboard holds data and is able to save and load itself, but if so the name must be unique. It's usefull for interop
 	///communication within the program
-	public class Blackboard : MonoBehaviour{
+	public class Blackboard : MonoBehaviour, ISavable{
 
 		[SerializeField]
 		private string _blackboardName = String.Empty;
 		[SerializeField]
-		private bool _doLoadSave;
-		[SerializeField]
 		private List<VariableData> variables = new List<VariableData>();
+		[SerializeField]
+		private bool _doLoadSave;
 		[SerializeField]
 		private bool _isGlobal;
 
 		private static Dictionary<string, Blackboard> _allBlackboards;
-
-		public bool isGlobal{
-			get {return _isGlobal;}
-			set {_isGlobal = value;}
-		}
-
 		public static Dictionary<string, Blackboard> allBlackboards{
 			get
 			{
@@ -45,7 +42,7 @@ namespace NodeCanvas{
 				}
 				return _allBlackboards;
 			}
-			set {_allBlackboards = value;}
+			private set {_allBlackboards = value;}
 		}
 
 		public string blackboardName{
@@ -61,6 +58,11 @@ namespace NodeCanvas{
 					allBlackboards[_blackboardName] = this;
 				}
 			}
+		}
+
+		public bool isGlobal{
+			get {return _isGlobal;}
+			set	{_isGlobal = value;}
 		}
 
 		public bool doLoadSave{
@@ -92,7 +94,7 @@ namespace NodeCanvas{
 
 			var typePairs = GetTypeDataRelation();
 			foreach (KeyValuePair<Type, Type> pair in typePairs){
-				if ( pair.Value == type || (pair.Value.IsAssignableFrom(type) && !typePairs.Values.ToList().Contains(type)) ){
+				if (pair.Value == type || (pair.Value.NCIsAssignableFrom(type) && !typePairs.Values.ToList().Contains(type)) ){
 					newData = (VariableData)gameObject.AddComponent(pair.Key);
 					break;
 				}
@@ -111,13 +113,11 @@ namespace NodeCanvas{
 		private Dictionary<Type, Type> GetTypeDataRelation(){
 
 			var pairs = new Dictionary<Type, Type>();
-			foreach (System.Reflection.Assembly ass in System.AppDomain.CurrentDomain.GetAssemblies()){
-				foreach (Type t in ass.GetTypes()){
-					if (typeof(VariableData).IsAssignableFrom(t) && !t.IsAbstract && t.GetCustomAttributes(typeof(ObsoleteAttribute), true).FirstOrDefault() == null ){
-						var valueField = t.GetField("value");
-						if (valueField != null)
-							pairs[t] = valueField.FieldType;
-					}
+			foreach (Type t in NCReflection.GetAssemblyTypes()){
+				if (typeof(VariableData).NCIsAssignableFrom(t) && !t.NCIsAbstract() && t.NCGetAttribute(typeof(ObsoleteAttribute), true) == null){
+					var valueField = t.NCGetField("value");
+					if (valueField != null)
+						pairs[t] = valueField.FieldType;
 				}
 			}
 			return pairs;
@@ -129,7 +129,7 @@ namespace NodeCanvas{
 			if (string.IsNullOrEmpty(name))
 				return null;
 
-			VariableData data = GetData(name, value != null? value.GetType() : typeof(object) );
+			var data = GetData(name, value != null? value.GetType() : typeof(object) );
 
 			if (data != null){
 
@@ -179,19 +179,20 @@ namespace NodeCanvas{
 		///Get the VariableData object of a certain value type itself.
 		public VariableData GetData(string dataName, Type ofType){
 
+			VariableData lastAssignable = null;
 			foreach (VariableData data in variables){
 
 				if (data.dataName == dataName){
-				
-					if (ofType == null)
+
+					if ( ofType == null || data.varType == ofType  || ofType.NCIsAssignableFrom(data.varType) /* || data.varType.NCIsAssignableFrom(ofType) */ )
 						return data;
 
-					if (data.varType.IsAssignableFrom(ofType) || data.varType == ofType || ofType.IsAssignableFrom(data.varType))
-						return data;
+					if (data.varType.NCIsAssignableFrom(ofType))
+						lastAssignable = data;
 				}
 			}
 
-			return null;
+			return lastAssignable;
 		}
 
 
@@ -211,7 +212,7 @@ namespace NodeCanvas{
 
 			List<string> foundNames = new List<string>();
 			foreach (VariableData data in variables){
-				if (ofType.IsAssignableFrom(data.varType))
+				if (ofType.NCIsAssignableFrom(data.varType))
 					foundNames.Add(data.dataName);
 			}
 
@@ -228,14 +229,9 @@ namespace NodeCanvas{
 
 		void Awake(){
 
+			if (isGlobal && allBlackboards.ContainsKey(blackboardName) && allBlackboards[blackboardName].isGlobal)
+				Debug.LogWarning("More than one Global Blackboards exist with the same name '" + blackboardName + "'. Make sure they have different names", gameObject);
 			allBlackboards[blackboardName] = this;
-			if (doLoadSave && Application.isPlaying)
-				Load();
-		}
-
-		void OnApplicationQuit(){
-			if (doLoadSave && Application.isPlaying)
-				Save();
 		}
 
 		void OnDestroy(){
@@ -257,18 +253,22 @@ namespace NodeCanvas{
 		////////////////////
 		//SAVING & LOADING//
 		////////////////////
-		
+
+		public string saveKey{
+			get {return "Blackboard-" + blackboardName;}
+		}
+
+		//Save/Load is not supported in those platforms
+		#if !NETFX_CORE && !UNITY_WP8
+
 		///Serrialize the blackboard's data as an 64String in PlayerPrefs. The name of the blackboard is important
 		///The final string format that the blackboard is saved as, is returned.
 		public string Save(){
 
 			if (!Application.isPlaying){
-
 				Debug.Log("You can only Save a blackboard in runtime for safety...");
 				return null;
 			}
-
-			string stringFormat= "Blackboard-" + blackboardName;
 
 			var formatter = new BinaryFormatter();
 			var stream = new MemoryStream();
@@ -285,10 +285,10 @@ namespace NodeCanvas{
 			}
 
 			formatter.Serialize(stream, dataList);
-			PlayerPrefs.SetString(stringFormat, Convert.ToBase64String(stream.GetBuffer()));
+			PlayerPrefs.SetString(saveKey, Convert.ToBase64String(stream.GetBuffer()));
 
-			Debug.Log("Saved: " + stringFormat, gameObject);
-			return stringFormat;
+			Debug.Log("Saved: " + saveKey, gameObject);
+			return saveKey;
 		}
 
 		///Deserialize and load back all data. The name of the blackboard is used as a string format. Returns false if no saves were found.
@@ -299,11 +299,10 @@ namespace NodeCanvas{
 				return false;
 			}
 
-			string stringFormat= "Blackboard-" + blackboardName;
-			var dataString = PlayerPrefs.GetString(stringFormat);
+			var dataString = PlayerPrefs.GetString(saveKey);
 
 			if (dataString == String.Empty){
-				Debug.Log("No Save found for: " + stringFormat);
+				Debug.Log("No Save found for: " + saveKey);
 				return false;
 			}
 
@@ -324,7 +323,7 @@ namespace NodeCanvas{
 				variables.Add(newData);
 			}				
 
-			Debug.Log("Loaded: " + stringFormat, gameObject);
+			Debug.Log("Loaded: " + saveKey, gameObject);
 			return true;
 		}
 
@@ -343,12 +342,28 @@ namespace NodeCanvas{
 				this.value = value;
 			}
 		}
+	
+		#else
+
+		//implement ISavable members for the shake of not getting build errors
+		public string Save(){
+			Debug.LogError("Saving blackboards in NETFX_CORE is not supported", gameObject);
+			return null;
+		}
+
+		public bool Load(){
+			Debug.LogError("Loading blackboards in NETFX_CORE is not supported", gameObject);
+			return false;
+		}
+
+		#endif
+
+
 
 		//////////////////////////////////
 		///////GUI & EDITOR STUFF/////////
 		//////////////////////////////////
 		#if UNITY_EDITOR
-
 
 		[ContextMenu("Reset")]
 		void Reset(){
@@ -383,7 +398,7 @@ namespace NodeCanvas{
 			GUILayout.EndHorizontal();
 
 			ShowVariablesGUI();
-			ShowSaveLoadGUI();
+			//ShowSaveLoadGUI();
 
 			if (GUI.changed)
 		        EditorUtility.SetDirty(this);
@@ -400,8 +415,17 @@ namespace NodeCanvas{
 					Undo.RegisterCreatedObjectUndo(newData, "New Variable");
 				};
 
+				var assetPaths = AssetDatabase.GetAllAssetPaths().Select(p => EditorUtils.Strip(p, "/")).ToList();
 				var menu = new GenericMenu();
 				foreach (KeyValuePair<Type, Type> pair in GetTypeDataRelation()){
+
+					if (typeof(MonoBehaviour).IsAssignableFrom(pair.Value)){
+						if (!assetPaths.Contains(pair.Value.Name+".cs") && !assetPaths.Contains(pair.Value.Name+".js") && !assetPaths.Contains(pair.Value.Name+".boo")){
+							Debug.LogWarning(string.Format("Class Name {0} is different from it's script name", pair.Value.Name));
+							continue;
+						}
+					}
+
 					menu.AddItem(new GUIContent( (!string.IsNullOrEmpty(pair.Value.Namespace)? pair.Value.Namespace + "/": "") + EditorUtils.TypeName(pair.Value)), false, Selected, pair.Value);
 					menu.ShowAsContext();
 					Event.current.Use();
@@ -417,7 +441,7 @@ namespace NodeCanvas{
 				GUI.color = Color.white;
 				GUILayout.EndHorizontal();
 			} else {
-				EditorGUILayout.HelpBox("There are no variables in the Blackboard. Add some with the button above", MessageType.Info);
+				EditorGUILayout.HelpBox("Blackboard has no variables", MessageType.Info);
 			}
 
 			foreach ( VariableData data in variables.ToArray()){
@@ -485,7 +509,6 @@ namespace NodeCanvas{
 				PlayerPrefs.DeleteKey("Blackboard-" + blackboardName);
 			}
 			GUILayout.EndHorizontal();
-			
 			GUI.backgroundColor = Color.white;
 			GUI.color = Color.white;
 		}

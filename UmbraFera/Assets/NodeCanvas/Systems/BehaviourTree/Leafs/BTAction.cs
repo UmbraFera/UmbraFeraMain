@@ -81,12 +81,8 @@ namespace NodeCanvas.BehaviourTrees{
 
 		protected override void OnNodeGUI(){
 
-	        Rect markRect = new Rect(nodeRect.width - 15, 5, 15, 15);
 	        if (referencedNode != null)
-	        	GUI.Label(markRect, "<b>R</b>");
-
-			if (action == null) GUILayout.Label("No Action");
-			else GUILayout.Label(action.taskInfo);
+	        	GUI.Label(new Rect(nodeRect.width - 15, 5, 15, 15), "<b>R</b>");
 		}
 
 		protected override void OnNodeInspectorGUI(){
@@ -114,7 +110,7 @@ namespace NodeCanvas.BehaviourTrees{
 		}
 
 		protected override void OnContextMenu(UnityEditor.GenericMenu menu){
-			menu.AddItem (new GUIContent ("Duplicate (Reference)"), false, DuplicateReference);
+			menu.AddItem (new GUIContent ("Duplicate Referenced"), false, DuplicateReference);
 		}
 		
 		private void DuplicateReference(){

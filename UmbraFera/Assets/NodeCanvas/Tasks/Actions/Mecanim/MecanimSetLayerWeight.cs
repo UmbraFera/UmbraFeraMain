@@ -3,19 +3,14 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
-	[Category("Mecanim")]
 	[Name("Set Layer Weight")]
-	[AgentType(typeof(Animator))]
-	public class MecanimSetLayerWeight : ActionTask {
+	public class MecanimSetLayerWeight : MecanimActions {
 
 		public int layerIndex;
 		public BBFloat layerWeight;
 
 		[SliderField(0,1)]
 		public float transitTime;
-
-		[GetFromAgent]
-		private Animator animator;
 
 		private float currentValue;
 

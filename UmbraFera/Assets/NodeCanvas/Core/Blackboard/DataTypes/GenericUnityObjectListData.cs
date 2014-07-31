@@ -1,5 +1,7 @@
 ﻿/*
 
+This can't really work :(
+
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -29,6 +31,7 @@ namespace NodeCanvas.Variables{
 			get {return type;}
 		}
 
+		//The problem is here in the getter....
 		public override object objectValue{
 			get {return value;}
 			set

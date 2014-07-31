@@ -4,6 +4,7 @@ using UnityEditor;
 
 using UnityEngine;
 using System.Collections;
+using System.Linq;
 
 namespace NodeCanvas {
 
@@ -17,7 +18,26 @@ namespace NodeCanvas {
 		private Node _targetNode;
 		[SerializeField]
 		private bool _isDisabled;
-		private Status _connectionState = Status.Resting;
+		private Status _connectionStatus = Status.Resting;
+
+		///Create a new Connection
+		public static Connection Create(Node source, Node target, int sourceIndex){
+
+			Connection newConnection = new GameObject(source.ID + "_" + target.ID + "_Connection").AddComponent(source.outConnectionType) as Connection;
+			newConnection.transform.parent = source.transform;
+			newConnection.transform.localPosition = Vector3.zero;
+			newConnection.sourceNode = source;
+			newConnection.targetNode = target;
+			newConnection.sourceNode.outConnections.Insert(sourceIndex, newConnection);
+			newConnection.targetNode.inConnections.Add(newConnection);
+			newConnection.OnCreate(sourceIndex, target.inConnections.IndexOf(newConnection));
+			return newConnection;
+		}
+
+		///Called when connection is created
+		virtual protected void OnCreate(int sourceIndex, int targetIndex){
+
+		}
 
 		
 		///The source node of the connection
@@ -34,18 +54,18 @@ namespace NodeCanvas {
 
 		///The connection status
 		public Status connectionStatus{
-			get {return _connectionState;}
-			set {_connectionState = value;}
+			get {return _connectionStatus;}
+			set {_connectionStatus = value;}
 		}
 
-		///Is the connection disabled?
-		public bool isDisabled{
-			get {return _isDisabled;}
+		///Is the connection active?
+		public bool isActive{
+			get	{return !_isDisabled;}
 			set
 			{
-				if (_isDisabled && value == true)
+				if (!_isDisabled && value == false)
 					ResetConnection();
-				_isDisabled = value;
+				_isDisabled = !value;
 			}
 		}
 
@@ -80,7 +100,7 @@ namespace NodeCanvas {
 		///Execute the conneciton for the specified agent and blackboard.
 		public Status Execute(Component agent, Blackboard blackboard){
 
-			if (isDisabled)
+			if (!isActive)
 				return Status.Resting;
 
 			connectionStatus = OnExecute(agent, blackboard);
@@ -100,8 +120,11 @@ namespace NodeCanvas {
 		///Resets the connection and its targetNode, optionaly recursively
 		public void ResetConnection(bool recursively){
 
-			connectionStatus = Status.Resting;
+			if (connectionStatus == Status.Resting)
+				return;
+
 			OnReset();
+			connectionStatus = Status.Resting;
 
 			if (recursively)
 				targetNode.ResetNode(recursively);
@@ -117,59 +140,42 @@ namespace NodeCanvas {
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 
-		protected Rect areaRect        = new Rect(0,0,50,10);
+		protected Rect areaRect  = new Rect(0,0,50,10);
 		
 		[SerializeField]
-		bool isVirtualConnection       = false;
-		Status lastConnectionState = Status.Resting;
-		Color connectionColor          = new Color(0.5f,0.5f,0.8f,0.8f);
-		float lineSize                 = 2;
-		bool nowSwitchingColors        = false;
-		Vector3 lineFromTangent        = Vector3.zero;
-		Vector3 lineToTangent          = Vector3.zero;
-		bool isRelink;
+		private bool isVirtualConnection = false;
+		private Status lastStatus        = Status.Resting;
+		private Color connectionColor    = new Color(0.5f,0.5f,0.8f,0.8f);
+		private float lineSize           = 3;
+		private bool nowSwitchingColors  = false;
+		private Vector3 lineFromTangent  = Vector3.zero;
+		private Vector3 lineToTangent    = Vector3.zero;
+		private bool isRelinking         = false;
 
-		///Create a new Connection
-		public static Connection Create(Node source, Node target, int sourceIndex){
-
-			Connection newConnection = new GameObject(source.ID + "_" + target.ID + "_Connection").AddComponent(source.outConnectionType) as Connection;
-			newConnection.transform.parent = source.transform;
-			newConnection.transform.localPosition = Vector3.zero;
-			newConnection.sourceNode = source;
-			newConnection.targetNode = target;
-			newConnection.sourceNode.outConnections.Insert(sourceIndex, newConnection);
-			newConnection.targetNode.inConnections.Add(newConnection);
-			newConnection.OnCreate(sourceIndex, target.inConnections.IndexOf(newConnection));
-			return newConnection;
-		}
-
-		///Called when connection is created
-		virtual protected void OnCreate(int sourceIndex, int targetIndex){
-
-		}
+		private static float defaultLineSize = 3;
 
 
-		//Relink connection to other target node
+		//Relink connection to another target node
 		public void Relink(Node newNode){
 
 			Undo.RecordObject(targetNode, "Relink");
-			Undo.RecordObject(newNode, "Relink");
-			Undo.RecordObject(this, "Relink");
 			targetNode.inConnections.Remove(this);
+			Undo.RecordObject(newNode, "Relink");
 			newNode.inConnections.Add(this);
+			Undo.RecordObject(this, "Relink");
 			targetNode = newNode;
 		}
 
 		//Draw them
 		public void DrawConnectionGUI(Vector3 lineFrom, Vector3 lineTo){
-
+			
 			//curveMode 0 is smooth
-			var mlt = Graph.curveMode == 0? 0.85f : 1f;
+			var mlt = NCPrefs.curveMode == 0? 0.85f : 1f;
 			var tangentX = Mathf.Abs(lineFrom.x - lineTo.x) * mlt;
 			var tangentY = Mathf.Abs(lineFrom.y - lineTo.y) * mlt;
 
 			GUI.color = connectionColor;
-			var arrowRect = new Rect(0,0,20,20);
+			var arrowRect = new Rect(0,0,15,15);
 			arrowRect.center = lineTo;
 
 			var hor = 0;
@@ -194,23 +200,23 @@ namespace NodeCanvas {
 			if (lineTo.x <= targetNode.nodeRect.x){
 				lineToTangent = new Vector3(-tangentX, 0, 0);
 				hor--;
-				GUI.Box(arrowRect, "", "nodeInputLeft");
+				GUI.Box(arrowRect, "", "circle");
 			}
 
 			if (lineTo.x >= targetNode.nodeRect.xMax){
 				lineToTangent = new Vector3(tangentX, 0, 0);
 				hor++;
-				GUI.Box(arrowRect, "", "nodeInputRight");
+				GUI.Box(arrowRect, "", "circle");
 			}
 
 			if (lineTo.y <= targetNode.nodeRect.y){
 				lineToTangent = new Vector3(0, -tangentY, 0);
-				GUI.Box(arrowRect, "", "nodeInputTop");
+				GUI.Box(arrowRect, "", "circle");
 			}
 
 			if (lineTo.y >= targetNode.nodeRect.yMax){
 				lineToTangent = new Vector3(0, tangentY, 0);
-				GUI.Box(arrowRect, "", "nodeInputBottom");
+				GUI.Box(arrowRect, "", "circle");
 			}
 
 			GUI.color = Color.white;
@@ -227,21 +233,26 @@ namespace NodeCanvas {
 
 			///
 
-			Event e = Event.current;
+			var e = Event.current;
 
 			var outPortRect = new Rect(0,0,12,12);
 			outPortRect.center = lineFrom;
 
 			if (!Application.isPlaying){
 				connectionColor = Node.restingColor;
-				lineSize = Graph.currentSelection == this? 4 : 2;
+				lineSize = Graph.currentSelection == this? 5 : defaultLineSize;
 			}
 
-			//Ability to relink connection to other nodes
-			if (Graph.allowClick && areaRect.Contains(e.mousePosition) && e.type == EventType.MouseDown && e.button == 0)
-				isRelink = true;
+			//On click select this connection
+			if ( (Graph.allowClick && e.type == EventType.MouseDown && e.button == 0) && (areaRect.Contains(e.mousePosition) || outPortRect.Contains(e.mousePosition) )){
+				if (!outPortRect.Contains(e.mousePosition))
+					isRelinking = true;
+				Graph.currentSelection = this;
+				e.Use();
+				return;
+			}
 
-			if (isRelink){
+			if (isRelinking){
 				Handles.DrawBezier(areaRect.center, e.mousePosition, areaRect.center, e.mousePosition, new Color(1,1,1,0.5f), null, 2);
 				if (e.type == EventType.MouseUp){
 					foreach(Node node in graph.allNodes){
@@ -250,15 +261,9 @@ namespace NodeCanvas {
 							break;
 						}
 					}
-					isRelink = false;
+					isRelinking = false;
+					e.Use();
 				} 
-			}
-
-			//On click select this connection
-			if ( (Graph.allowClick && e.type == EventType.MouseDown && e.button == 0) && (areaRect.Contains(e.mousePosition) || outPortRect.Contains(e.mousePosition) )){
-				Graph.currentSelection = this;
-				e.Use();
-				return;
 			}
 
 			//with delete key, remove connection
@@ -268,16 +273,16 @@ namespace NodeCanvas {
 				return;
 			}
 
-			connectionColor = isDisabled? new Color(0.3f, 0.3f, 0.3f) : connectionColor;
+			connectionColor = isActive? connectionColor : new Color(0.3f, 0.3f, 0.3f);
 
 			//check this != null for when in playmode user removes a running connection
-			if (Application.isPlaying && this != null && connectionStatus != lastConnectionState && !nowSwitchingColors && !isDisabled){
+			if (Application.isPlaying && this != null && connectionStatus != lastStatus && !nowSwitchingColors && isActive){
 				MonoManager.current.StartCoroutine(ChangeLineColorAndSize());
-				lastConnectionState = connectionStatus;
+				lastStatus = connectionStatus;
 			}
 
 			Handles.color = connectionColor;
-			if (Graph.curveMode == 0){
+			if (NCPrefs.curveMode == 0){
 				var shadow = new Vector3(3.5f,3.5f,0);
 				Handles.DrawBezier(lineFrom, lineTo+shadow, lineFrom+shadow + lineFromTangent+shadow, lineTo+shadow + lineToTangent, new Color(0,0,0,0.1f), null, lineSize+10f);
 				Handles.DrawBezier(lineFrom, lineTo, lineFrom + lineFromTangent, lineTo + lineToTangent, connectionColor, null, lineSize);
@@ -354,7 +359,7 @@ namespace NodeCanvas {
 			Undo.RecordObject(this, "Connection Value Change");
 
 			GUILayout.BeginHorizontal();
-			isDisabled = EditorGUILayout.ToggleLeft("Disable Connection", isDisabled, GUILayout.Width(150));
+			isActive = EditorGUILayout.ToggleLeft("ACTIVE", isActive, GUILayout.Width(150));
 			isVirtualConnection = EditorGUILayout.ToggleLeft("Shortcut", isVirtualConnection);
 			GUILayout.EndHorizontal();
 
@@ -396,7 +401,7 @@ namespace NodeCanvas {
 			while(timer < effectLength){
 
 				timer += Time.deltaTime;
-				lineSize = Mathf.Lerp(5, 2, timer/effectLength);
+				lineSize = Mathf.Lerp(5, defaultLineSize, timer/effectLength);
 				yield return null;
 			}
 

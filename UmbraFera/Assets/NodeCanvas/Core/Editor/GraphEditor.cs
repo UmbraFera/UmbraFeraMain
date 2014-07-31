@@ -1,5 +1,5 @@
 using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 using UnityEditor;
 using NodeCanvas;
 
@@ -23,6 +23,8 @@ namespace NodeCanvasEditor{
 		private float topMargin = 20;
 		private float bottomMargin = 5;
 		private int repaintCounter;
+		private Vector2 selectionStartPos;
+		private bool isMultiSelecting;
 
 		private Graph rootGraph{
 			get
@@ -122,8 +124,6 @@ namespace NodeCanvasEditor{
                 GUIUtility.keyboardControl = 0;
 				return;
 			}
-			if (e.type == EventType.MouseUp)
-				SnapNodes();
 
 			if (e.type == EventType.MouseDown || e.type == EventType.MouseUp || e.type == EventType.KeyUp){
 				if (PrefabUtility.GetPrefabType(currentGraph) == PrefabType.PrefabInstance){
@@ -131,6 +131,9 @@ namespace NodeCanvasEditor{
 					PrefabUtility.DisconnectPrefabInstance(currentGraph);
 				}
 			}
+
+			if (e.type == EventType.MouseUp)
+				SnapNodes();
 
 			//Canvas Scroll pan
 			if (e.button == 0 && e.isMouse && e.type == EventType.MouseDrag && e.alt){
@@ -144,7 +147,7 @@ namespace NodeCanvasEditor{
 			canvas.width = canvasLimits.width;
 			canvas.height = canvasLimits.height;
 
-			GUI.Box(actualCanvas, "NodeCanvas v1.5.1", "canvasBG");
+			GUI.Box(actualCanvas, "NodeCanvas v1.5.3", "canvasBG");
 			DrawGrid();
 			
 			//Begin windows and ScrollView for the nodes.
@@ -164,6 +167,46 @@ namespace NodeCanvasEditor{
 
 			currentGraph.ShowGraphControls();
 
+			if (Graph.allowClick && e.button == 0 && e.type == EventType.MouseDown && !e.alt && !e.shift){
+				selectionStartPos = e.mousePosition;
+				isMultiSelecting = true;
+			}
+
+			if (isMultiSelecting){
+				var rect = GetSelectionRect(e.mousePosition);
+				if (rect.width > 5 && rect.height > 5){
+					GUI.color = new Color(0.5f,0.5f,1,0.3f);
+					GUI.Box(rect, "");
+					rect.center += scrollPos;
+					foreach (Node node in currentGraph.allNodes){
+						if (RectContainsRect(rect, node.nodeRect) && !node.isHidden){
+							var highlightRect = node.nodeRect;
+							highlightRect.center += new Vector2(5 ,topMargin) - scrollPos;
+							GUI.Box(highlightRect, "", "windowHighlight");
+						}
+					}
+				}
+			}
+
+			if (isMultiSelecting && e.button == 0 && e.type == EventType.MouseUp){
+				var overAnyNode = false;
+				var overNodes = new List<Object>();
+				var rect = GetSelectionRect(e.mousePosition);
+				rect.center += scrollPos;
+				foreach (Node node in currentGraph.allNodes){
+
+					if (node.nodeRect.Contains(e.mousePosition)){
+						overAnyNode = true;
+						break;
+					}
+
+					if (RectContainsRect(rect, node.nodeRect) && !node.isHidden)
+						overNodes.Add(node);
+				}
+				Graph.multiSelection = overAnyNode? new List<Object>() : overNodes;
+				isMultiSelecting = false;
+			}
+
 			if (repaintCounter > 0 || currentGraph.isRunning){
 				repaintCounter = Mathf.Max (repaintCounter -1, 0);
 				Repaint();
@@ -175,10 +218,15 @@ namespace NodeCanvasEditor{
 			GUI.backgroundColor = Color.white;
 		}
 
+		//rect b marginaly contained inside rect a?
+		bool RectContainsRect(Rect a, Rect b){
+			return a.Contains(new Vector2(b.x, b.y)) || a.Contains(new Vector2(b.xMax, b.yMax));
+		}
+
 		//Draw a simple grid
 		void DrawGrid(){
 
-			Handles.color = new Color(0,0,0,0.07f);
+			Handles.color = new Color(0,0,0,0.1f);
 			for (int i = 0; i < Screen.width; i++){
 				if (i % 30 == 0)
 					Handles.DrawLine(new Vector3(i,0,0), new Vector3(i,Screen.height,0));
@@ -216,24 +264,18 @@ namespace NodeCanvasEditor{
 			GUILayout.BeginVertical();
 			if (root.nestedGraphView == this || root.nestedGraphView == null){
 
-				var labelStyle = new GUIStyle("label");
-//				labelStyle.alignment = useExternalInspector? TextAnchor.UpperLeft : TextAnchor.UpperCenter;
 				if (root.agent == null && root.blackboard == null){
 
-					GUILayout.Label("<size=18>" + root.graphName + "</size>", labelStyle);	
+					GUILayout.Label("<b><size=22>" + root.graphName + "</size></b>");	
 		
 				} else {
 
-					GUILayout.Label("<size=18>" + root.graphName + "</size>" + "\n<size=10>" + agentInfo + " | " + bbInfo + "</size>", labelStyle);
+					GUILayout.Label("<b><size=22>" + root.graphName + "</size></b>" + "\n<size=10>" + agentInfo + " | " + bbInfo + "</size>");
 				}
 
 			} else {
 
 				GUILayout.BeginHorizontal();
-/*				
-				if (!useExternalInspector)
-					GUILayout.FlexibleSpace();
-*/
 				if (GUILayout.Button("^ " + root.graphName, new GUIStyle("button"))){
 					root.nestedGraphView = null;
 					return;
@@ -253,7 +295,7 @@ namespace NodeCanvasEditor{
 		//Snap all nodes
 		void SnapNodes(){
 
-			if (!Graph.doSnap)
+			if (!NCPrefs.doSnap)
 				return;
 
 			foreach(Node node in currentGraph.allNodes){
@@ -264,19 +306,30 @@ namespace NodeCanvasEditor{
 			}
 		}
 
+
 		//Change viewing graph
 		void OnSelectionChange(){
 			
 			if (Selection.activeGameObject != null){
 				var foundOwner = Selection.activeGameObject.GetComponent<GraphOwner>();
-				if (!Graph.isLocked && foundOwner != null){
-					targetOwner = foundOwner;
-					Graph.currentSelection = null;
+				if (!NCPrefs.isLocked && foundOwner != null){
+					var lastEditor = EditorWindow.focusedWindow;
+					OpenWindow(foundOwner);
+					if (lastEditor) lastEditor.Focus();
 				}
 			}
 		}
 
-	    //Opeining the window for a graph owner
+		Rect GetSelectionRect(Vector2 endPos){
+			var num1 = (selectionStartPos.x < endPos.x)? selectionStartPos.x : endPos.x;
+			var num2 = (selectionStartPos.x > endPos.x)? selectionStartPos.x : endPos.x;
+			var num3 = (selectionStartPos.y < endPos.y)? selectionStartPos.y : endPos.y;
+			var num4 = (selectionStartPos.y > endPos.y)? selectionStartPos.y : endPos.y;
+			return new Rect(num1, num3, num2 - num1, num4 - num3);		
+		}
+
+
+	    //Opening the window for a graph owner
 	    public static GraphEditor OpenWindow(GraphOwner owner){
 	    	var window = OpenWindow(owner.behaviour, owner, owner.blackboard);
 	    	window.targetOwner = owner;
@@ -291,11 +344,11 @@ namespace NodeCanvasEditor{
 	    //...
 	    public static GraphEditor OpenWindow(Graph newGraph, Component agent, Blackboard blackboard) {
 
-	        GraphEditor window = GetWindow(typeof(GraphEditor)) as GraphEditor;
+	        var window = GetWindow(typeof(GraphEditor)) as GraphEditor;
 	        newGraph.agent = agent;
 	        newGraph.blackboard = blackboard;
-	        newGraph.SendTaskOwnerDefaults();
 	        newGraph.nestedGraphView = null;
+	        newGraph.SendTaskOwnerDefaults();
 	        newGraph.UpdateNodeIDsInGraph();
 
 	        window.rootGraph = newGraph;

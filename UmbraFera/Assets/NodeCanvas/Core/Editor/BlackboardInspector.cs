@@ -6,7 +6,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvasEditor{
 
-	[CustomEditor(typeof(Blackboard))]
+	[CustomEditor(typeof(Blackboard), true)]
 	public class BlackboardInspector : Editor {
 
 		void OnEnable(){
@@ -22,6 +22,9 @@ namespace NodeCanvasEditor{
 			EditorUtils.EndOfInspector();
 			if (Application.isPlaying)
 				Repaint();
+
+			if (GUI.changed)
+				EditorUtility.SetDirty(target);
 		}
 	}
 }

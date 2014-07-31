@@ -20,10 +20,6 @@ namespace NodeCanvas.BehaviourTrees{
 			set {condition = (ConditionTask)value;}
 		}
 /*
-		public override System.Type outConnectionType{
-			get {return typeof(Connection);}
-		}
-
 		public override int maxOutConnections{
 			get {return 1;}
 		}
@@ -72,12 +68,8 @@ namespace NodeCanvas.BehaviourTrees{
 
 		protected override void OnNodeGUI(){
 			
-	        Rect markRect = new Rect(nodeRect.width - 15, 5, 15, 15);
 	        if (referencedNode != null)
-	        	GUI.Label(markRect, "<b>R</b>");
-
-			if (condition == null) GUILayout.Label("No Condition");
-			else GUILayout.Label(condition.taskInfo);
+	        	GUI.Label(new Rect(nodeRect.width - 15, 5, 15, 15), "<b>R</b>");
 		}
 
 		protected override void OnNodeInspectorGUI(){
@@ -104,7 +96,7 @@ namespace NodeCanvas.BehaviourTrees{
 		}
 
 		protected override void OnContextMenu(UnityEditor.GenericMenu menu){
-			menu.AddItem (new GUIContent ("Duplicate (Reference)"), false, DuplicateReference);
+			menu.AddItem (new GUIContent ("Duplicate Referenced"), false, DuplicateReference);
 		}
 		
 		private void DuplicateReference(){

@@ -13,7 +13,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 		[SerializeField]
 		private FSM _nestedFSM;
-		private bool instanceChecked;
+		private bool instantiated;
 
 		public string successState;
 		public string failureState;
@@ -41,6 +41,10 @@ namespace NodeCanvas.BehaviourTrees{
 
 		/////////
 
+		protected override void OnAwake(){
+			CheckInstance();
+		}
+
 		protected override Status OnExecute(Component agent, Blackboard blackboard){
 
 			if (nestedFSM == null || nestedFSM.primeNode == null)
@@ -66,7 +70,7 @@ namespace NodeCanvas.BehaviourTrees{
 			return status;
 		}
 
-		private void OnFSMFinish(){
+		void OnFSMFinish(){
 			if (status == Status.Running)
 				status = Status.Success;
 		}
@@ -82,12 +86,12 @@ namespace NodeCanvas.BehaviourTrees{
 				nestedFSM.PauseGraph();
 		}
 
-		private void CheckInstance(){
+		void CheckInstance(){
 
-			if (!instanceChecked && nestedFSM != null && nestedFSM.transform.parent != graph.transform){
+			if (!instantiated && nestedFSM != null && nestedFSM.transform.parent != graph.transform){
 				nestedFSM = (FSM)Instantiate(nestedFSM, transform.position, transform.rotation);
 				nestedFSM.transform.parent = graph.transform;
-				instanceChecked = true;	
+				instantiated = true;	
 			}
 		}
 

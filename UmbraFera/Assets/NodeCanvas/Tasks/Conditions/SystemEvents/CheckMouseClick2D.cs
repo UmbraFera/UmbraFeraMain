@@ -24,12 +24,12 @@ namespace NodeCanvas.Conditions{
 			return false;
 		}
 
-		void OnMouseDown(){
+		public void OnMouseDown(){
 			if (checkType == MouseClickEvent.MouseDown)
 				YieldReturn(true);
 		}
 
-		void OnMouseUp(){
+		public void OnMouseUp(){
 			if (checkType == MouseClickEvent.MouseUp)
 				YieldReturn(true);
 		}

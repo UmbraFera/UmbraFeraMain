@@ -48,11 +48,6 @@ namespace NodeCanvas.BehaviourTrees{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 		
-		protected override void OnNodeGUI(){
-
-			GUILayout.Label(condition? condition.taskInfo : "No Condition");
-		}
-
 		protected override void OnNodeInspectorGUI(){
 
 			if (condition == null){

@@ -35,11 +35,6 @@ namespace NodeCanvas.BehaviourTrees{
 			if (list.value == null || list.value.Count == 0)
 				return Status.Failure;
 
-			if (list.value[currentIndex] == null){
-				list.value.RemoveAt(currentIndex);
-				return Status.Running;
-			}
-
 			current.value = list.value[currentIndex];
 			status = decoratedConnection.Execute(agent, blackboard);
 
@@ -49,7 +44,7 @@ namespace NodeCanvas.BehaviourTrees{
 			if (status == Status.Failure && terminationCondition == TerminationConditions.FirstFailure)
 				return Status.Failure;
 
-			if (status == Status.Success || status == Status.Failure){
+			if (status != Status.Running){
 
 				if (currentIndex == list.value.Count - 1 || currentIndex == maxIteration.value - 1)
 					return status;

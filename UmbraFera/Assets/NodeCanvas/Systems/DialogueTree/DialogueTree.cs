@@ -66,7 +66,7 @@ namespace NodeCanvas.DialogueTrees{
 			
 			} else {
 
-				Debug.Log("Dialogue Started with null Agent to be used as 'Owner'. A default one will be created now...", this.gameObject);
+				Debug.Log("Dialogue Started with no Agent to be used as 'Owner'. A default one will be created now...", this.gameObject);
 				var actor = this.gameObject.AddComponent<DialogueActor>();
 				actor.blackboard = this.gameObject.AddComponent<Blackboard>();
 				actor.actorName = "Default";
@@ -81,10 +81,9 @@ namespace NodeCanvas.DialogueTrees{
 			foreach (string actorName in dialogueActorNames)
 				actorReferences[actorName] = DialogueActor.FindActorWithName(actorName);
 
-			if (dialogueActorNames.Count != actorReferences.Keys.Count){
-				Debug.LogError("Not all Dialogue Actors were found for the Dialogue '" + graphName + "'", gameObject);
-				StopGraph();
-				return;
+			foreach (KeyValuePair<string, DialogueActor> pair in actorReferences){
+				if (pair.Value == null)
+					Debug.LogWarning(pair.Key + " DialogueActor not found when starting Dialogue Tree " + graphName + ". Dialogue will play but if a node with that actor is encountered an error will show", gameObject);
 			}
 
 			//DLGNodes implement ITaskDefaults to provide defaults for the tasks they contain based on the dialogue actor selected for the node
@@ -115,7 +114,7 @@ namespace NodeCanvas.DialogueTrees{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 		
-		[MenuItem("NC/Create Dialogue Tree")]
+		[MenuItem("Window/NodeCanvas/Create Dialogue Tree")]
 		public static void CreateDialogueTree(){
 			DialogueTree newDLG = new GameObject("DialogueTree").AddComponent(typeof(DialogueTree)) as DialogueTree;
 			Selection.activeObject = newDLG;

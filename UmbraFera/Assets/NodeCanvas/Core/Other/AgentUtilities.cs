@@ -1,19 +1,23 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace NodeCanvas{
 
 	///Automaticaly added to the agent when needed.
 	///Handles forwarding Unity event messages to the Tasks that need them as well as Custom event forwarding.
 	///A task can listen to an event message by using [EventListener(param string[])] attribute.
+	///This can also be used as a general event message forwarding for other puporses than just tasks
 	public class AgentUtilities : MonoBehaviour{
 
 		private List<Listener> listeners = new List<Listener>();
 
 		void OnAnimatorIK(int layerIndex){
 			Send("OnAnimatorIK", layerIndex);
+		}
+
+		void OnAnimatorMove(){
+			Send("OnAnimatorMove", null);
 		}
 
 		void OnBecameInvisible(){
@@ -102,35 +106,35 @@ namespace NodeCanvas{
 		}
 
 		///Add a listener
-		public void Listen(MonoBehaviour mono, string toMessage){
+		public void Listen(object target, string toMessage){
 
 			foreach ( Listener listener in listeners){
-				if (listener.mono == mono){
+				if (listener.target == target){
 					if (!listener.messages.Contains(toMessage))
 						listener.messages.Add(toMessage);
 					return;
 				}
 			}
 
-			listeners.Add(new Listener(mono, toMessage));
+			listeners.Add(new Listener(target, toMessage));
 		}
 
 		///Remove a listener completely
-		public void Forget(MonoBehaviour mono){
+		public void Forget(object target){
 
 			foreach ( Listener listener in listeners){
-				if (listener.mono == mono){
+				if (listener.target == target){
 					listeners.Remove(listener);
 					return;
 				}
 			}
 		}
 
-		///Remove a listener from a message
-		public void Forget(MonoBehaviour mono, string forgetMessage){
+		///Remove a listener from a specific message
+		public void Forget(object target, string forgetMessage){
 
 			foreach ( Listener listener in listeners){
-				if (listener.mono == mono){
+				if (listener.target == target){
 					listener.messages.Remove(forgetMessage);
 					if (listener.messages.Count == 0)
 						listeners.Remove(listener);
@@ -140,24 +144,25 @@ namespace NodeCanvas{
 		}
 
 		///Call the functions
-		public void Send(string eventMessage, object arg){
+		public void Send(string eventName, object arg){
 
-			foreach ( Listener listener in listeners.ToArray()){
+			foreach ( Listener listener in listeners){
 
-				foreach ( string msg in listener.messages.ToArray()){
+				foreach ( string msg in listener.messages){
 
-					if (eventMessage == msg && listener.mono != null){
+					if (eventName == msg && listener.target != null){
 
-						var method = listener.mono.GetType().GetMethod(eventMessage, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+						var method = listener.target.GetType().NCGetMethod(eventName, true);
 						if (method == null){
-							Debug.LogWarning("Method '" + eventMessage + "' not found on subscribed type " + listener.mono.GetType().Name);
+							Debug.LogWarning("Method '" + eventName + "' not found on subscribed type " + listener.target.GetType().Name);
 							return;
 						}
-						var args = arg != null? new object[]{arg} : null;
+
+						var args = method.GetParameters().Length == 1? new object[]{arg} : null;
 						if (method.ReturnType == typeof(IEnumerator)){
-							MonoManager.current.StartCoroutine( (IEnumerator)method.Invoke(listener.mono, args ));
+							MonoManager.current.StartCoroutine( (IEnumerator)method.Invoke(listener.target, args ));
 						} else {
-							method.Invoke(listener.mono, args);
+							method.Invoke(listener.target, args);
 						}
 					}
 				}
@@ -167,12 +172,12 @@ namespace NodeCanvas{
 		///Describes a listener
 		class Listener{
 
-			public MonoBehaviour mono;
+			public object target;
 			public List<string> messages = new List<string>();
 
-			public Listener(MonoBehaviour mono, string message){
+			public Listener(object target, string message){
 
-				this.mono = mono;
+				this.target = target;
 				this.messages.Add(message);
 			}
 		}

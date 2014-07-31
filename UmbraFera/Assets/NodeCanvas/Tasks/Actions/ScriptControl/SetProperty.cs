@@ -30,7 +30,7 @@ namespace NodeCanvas.Actions{
 				if (string.IsNullOrEmpty(methodName))
 					return "No Property Selected";
 
-				return agentInfo + "." + methodName + " = " + setValue.selectedBBVariable;
+				return string.Format("{0}.{1} = {2}", agentInfo, methodName, setValue.selectedBBVariable);
 			}
 		}
 
@@ -38,20 +38,18 @@ namespace NodeCanvas.Actions{
 		protected override string OnInit(){
 			script = agent.GetComponent(scriptName);
 			if (script == null)
-				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "' . Did the agent changed at runtime?";
-			method = script.GetType().GetMethod(methodName, new System.Type[]{setValue.selectedType});
+				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "'";
+			method = script.GetType().NCGetMethod(methodName);
+			if (method == null)
+				return "Missing Property Method";
 			return null;
 		}
 
 		//do it by invoking method
 		protected override void OnExecute(){
 			
-			if (method != null){
-				method.Invoke(script, new object[]{setValue.selectedObjectValue} );
-				EndAction(true);
-			} else {
-				EndAction(false);
-			}
+			method.Invoke(script, new object[]{setValue.objectValue} );
+			EndAction(true);
 		}
 
 		////////////////////////////////////////
@@ -79,7 +77,7 @@ namespace NodeCanvas.Actions{
 					setValue.selectedType = method.GetParameters()[0].ParameterType;
 					if (Application.isPlaying)
 						OnInit();
-				}, true);
+				}, 1, true);
 			}
 
 			if (!string.IsNullOrEmpty(methodName)){

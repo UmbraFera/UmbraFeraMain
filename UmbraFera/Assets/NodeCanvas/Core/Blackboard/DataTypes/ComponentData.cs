@@ -16,7 +16,7 @@ namespace NodeCanvas.Variables{
 			get {return value != null? value.GetType() : System.Type.GetType(_typeName);}
 			set{
 				_typeName = value.AssemblyQualifiedName;
-				if (this.value != null && !value.IsAssignableFrom(this.value.GetType()) )
+				if (this.value != null && !value.NCIsAssignableFrom(this.value.GetType()) )
 					this.value = null;
 			}
 		}
@@ -30,7 +30,7 @@ namespace NodeCanvas.Variables{
 			set
 			{
 				this.value = (Component)value;
-				if (value != null && !type.IsAssignableFrom(value.GetType()))
+				if (value != null && !type.NCIsAssignableFrom(value.GetType()))
 					type = value.GetType();			
 			}
 		}

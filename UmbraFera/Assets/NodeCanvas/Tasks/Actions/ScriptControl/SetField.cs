@@ -29,7 +29,7 @@ namespace NodeCanvas.Actions{
 				if (string.IsNullOrEmpty(fieldName))
 					return "No Field Selected";
 
-				return agentInfo + "." + fieldName + " = " + setValue.selectedBBVariable;
+				return string.Format("{0}.{1} = {2}", agentInfo, fieldName, setValue.selectedBBVariable);
 			}
 		}
 
@@ -37,18 +37,16 @@ namespace NodeCanvas.Actions{
 			script = agent.GetComponent(scriptName);
 			if (script == null)
 				return "Missing Component";
-			field = script.GetType().GetField(fieldName);
+			field = script.GetType().NCGetField(fieldName);
+			if (field == null)
+				return "Missing Field Info";
 			return null;
 		}
 
 		protected override void OnExecute(){
 
-			if (field != null){
-				field.SetValue(script, setValue.selectedObjectValue);
-				EndAction(true);
-			} else {
-				EndAction(false);
-			}
+			field.SetValue(script, setValue.objectValue);
+			EndAction(true);
 		}
 
 		////////////////////////////////////////

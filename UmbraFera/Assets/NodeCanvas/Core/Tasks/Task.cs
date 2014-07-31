@@ -4,11 +4,11 @@ using UnityEditor;
 
 using UnityEngine;
 using System;
-using System.Reflection;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using NodeCanvas.Variables;
+using System.Reflection;
 
 namespace NodeCanvas{
 
@@ -27,11 +27,7 @@ namespace NodeCanvas{
 			}
 
 			//Runtime checks
-			private Component _current;
-			public Component current{
-				get {return _current;}
-				set {_current = value;}
-			}
+			public Component current{get;set;}
 			
 			[SerializeField]
 			private Component _value;
@@ -43,6 +39,7 @@ namespace NodeCanvas{
 				get {return typeof(GameObject);}
 			}
 			public override string ToString(){
+				if (!isOverride) return "<b>owner</b>";
 				if (useBlackboard) return base.ToString();
 				return "<b>" + (_value != null? _value.name : "NULL") + "</b>";
 			}
@@ -50,16 +47,19 @@ namespace NodeCanvas{
 
 		[SerializeField]
 		private MonoBehaviour _ownerSystem;
+		[SerializeField]
+		private bool _isActive = true;
 
 		[SerializeField]
 		private TaskAgent taskAgent = new TaskAgent();
 		private Blackboard _blackboard;
 		
-		//store to avoid spamming reflection
+		//store to avoid spamming
 		private System.Type _agentType;
 		private string _taskName;
 		private string _taskDescription;
 		//
+
 
 		//These are special so I write them first
 		public void SetOwnerSystem(ITaskSystem newOwnerSystem){
@@ -72,67 +72,40 @@ namespace NodeCanvas{
 		}
 
 		///The system this task belongs to from which defaults are taken from.
-		protected ITaskSystem ownerSystem{
+		public ITaskSystem ownerSystem{
 			get {return _ownerSystem as ITaskSystem;}
 		}
 
+		//The owner system's assigned agent
 		private Component ownerAgent{
-			get
-			{
-				if (_ownerSystem == null)
-					return null;
-				return (_ownerSystem as ITaskSystem).agent;
-			}
+			get	{return ownerSystem != null? ownerSystem.agent : null;}
 		}
 
+		//The owner system's assigned blackboard
 		private Blackboard ownerBlackboard{
-			get
-			{
-				if (_ownerSystem == null)
-					return null;
-				return (_ownerSystem as ITaskSystem).blackboard;
-			}
+			get	{return ownerSystem != null? ownerSystem.blackboard : null;}
 		}
 		///
 
+		new public string name{
+			get {return taskName;}
+		}
 
-		///The type that the agent will be set to by getting component from itself when the task initialize
-		///You can omit this to keep the agent passed as is or if there is no need for specific type
-		public System.Type agentType{
-
-			get
-			{
-				if (_agentType == null){
-					AgentTypeAttribute agentTypeAttribute = this.GetType().GetCustomAttributes(typeof(AgentTypeAttribute), true).FirstOrDefault() as AgentTypeAttribute;
-					if (agentTypeAttribute != null && typeof(Component).IsAssignableFrom(agentTypeAttribute.type) ){
-						_agentType = agentTypeAttribute.type;
-					} else {
-						_agentType = typeof(Component);
-					}
-				}
-				return _agentType;
-			}
+		public bool isActive{
+			get {return _isActive;}
+			set {_isActive = value;}
 		}
 
 		///The friendly task name
 		public string taskName{
 			get
 			{
-				if (string.IsNullOrEmpty(_taskName) ){
-					NameAttribute nameAttribute = this.GetType().GetCustomAttributes(typeof(NameAttribute), false).FirstOrDefault() as NameAttribute;
-					if (nameAttribute != null){
-
-						_taskName = nameAttribute.name;
-
-					} else {
-
-						#if UNITY_EDITOR
-						_taskName = EditorUtils.CamelCaseToWords(EditorUtils.TypeName(this.GetType()));
-						#endif
-						#if !UNITY_EDITOR
-						_taskName = this.GetType().Name;
-						#endif
-					}
+				if (string.IsNullOrEmpty(_taskName)){
+					var nameAtt = this.GetType().NCGetAttribute(typeof(NameAttribute), false) as NameAttribute;
+					_taskName = nameAtt != null? nameAtt.name : GetType().Name;
+					#if UNITY_EDITOR
+					_taskName = EditorUtils.CamelCaseToWords(_taskName);
+					#endif
 				}
 				return _taskName;
 			}
@@ -142,25 +115,24 @@ namespace NodeCanvas{
 			get
 			{
 				if (_taskDescription == null ){
-					DescriptionAttribute descAtt = this.GetType().GetCustomAttributes(typeof(DescriptionAttribute), false).FirstOrDefault() as DescriptionAttribute;
-					if (descAtt != null){
-						_taskDescription = descAtt.description;
-					} else {
-						_taskDescription = string.Empty;
-					}
+					var descAtt = this.GetType().NCGetAttribute(typeof(DescriptionAttribute), true) as DescriptionAttribute;
+					_taskDescription = descAtt != null? descAtt.description : string.Empty;
 				}
 				return _taskDescription;				
 			}
 		}
 
-		[System.Obsolete("override 'info' instead")]
-		virtual protected string actionInfo{
-			get {return taskInfo;}
-		}
-
-		[System.Obsolete("override 'info' instead")]
-		virtual protected string conditionInfo{
-			get {return taskInfo;}
+		///The type that the agent will be set to by getting component from itself when the task initialize only
+		///You can omit this to keep the agent passed as is or if there is no need for specific type
+		public System.Type agentType{
+			get
+			{
+				if (_agentType == null){
+					var typeAtt = this.GetType().NCGetAttribute(typeof(AgentTypeAttribute), true) as AgentTypeAttribute;
+					_agentType = (typeAtt != null && typeof(Component).NCIsAssignableFrom(typeAtt.type))? typeAtt.type : typeof(Component);
+				}
+				return _agentType;
+			}
 		}
 
 		///A short summary of what the task will finaly do. Derived tasks may override this.
@@ -168,9 +140,9 @@ namespace NodeCanvas{
 			get {return taskName;}
 		}
 
-		///Summary info to display final agent string within task info if needed
+		///Helper summary info to display final agent string within task info if needed
 		public string agentInfo{
-			get	{ return agentIsOverride? taskAgent.ToString() : "<b>owner</b>"; }
+			get	{ return taskAgent.ToString(); }
 		}
 
 		///Is the agent overriden or the default taken from owner system will be used?
@@ -215,8 +187,7 @@ namespace NodeCanvas{
 
 		protected void Awake(){
 			enabled = false;
-			SubscribeToEvents(agent);
-			CheckNullBBFields();
+			InitBBFields();
 			OnAwake();
 		}
 
@@ -279,7 +250,7 @@ namespace NodeCanvas{
 			SubscribeToEvents(newAgent);
 
 			//Usage of [RequiredField] and [GetFromAgent] attributes
-			foreach (FieldInfo field in this.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)){
+			foreach (FieldInfo field in this.GetType().NCGetFields()){
 
 				var value = field.GetValue(this);
 				
@@ -296,7 +267,7 @@ namespace NodeCanvas{
 						return false;
 					}
 
-					if (typeof(BBVariable).IsAssignableFrom(field.FieldType) && (value as BBVariable).isNull ) {
+					if (typeof(BBVariable).NCIsAssignableFrom(field.FieldType) && (value as BBVariable).isNull ) {
 						Debug.LogError("<b>Task Init:</b> A required BBVariable value for Task '" + taskName + "', is not set! Field: '" + field.Name + "' ", this);
 						return false;
 					}
@@ -305,7 +276,7 @@ namespace NodeCanvas{
 				var getterAttribute = field.GetCustomAttributes(typeof(GetFromAgentAttribute), true).FirstOrDefault() as GetFromAgentAttribute;
 				if (getterAttribute != null){
 
-					if (typeof(Component).IsAssignableFrom(field.FieldType)){
+					if (typeof(Component).NCIsAssignableFrom(field.FieldType)){
 
 						field.SetValue(this, newAgent.GetComponent(field.FieldType));
 						if ( (field.GetValue(this) as UnityEngine.Object) == null){
@@ -343,7 +314,7 @@ namespace NodeCanvas{
 		//Usage of [EventListener]. This is done in awake and init
 		void SubscribeToEvents(Component newAgent){
 
-			var msgAttribute = this.GetType().GetCustomAttributes(typeof(EventListenerAttribute), true).FirstOrDefault() as EventListenerAttribute;
+			var msgAttribute = this.GetType().NCGetAttribute(typeof(EventListenerAttribute), true) as EventListenerAttribute;
 			if (msgAttribute != null){
 				var agentUtils = newAgent.GetComponent<AgentUtilities>();
 				if (agentUtils == null)
@@ -354,6 +325,12 @@ namespace NodeCanvas{
 			}
 		}
 
+		void UnsubscribeFromEvents(){
+			var agentUtils = agent.GetComponent<AgentUtilities>();
+			if (agentUtils != null)
+				agentUtils.Forget(this);
+		}
+
 		//Set the target blackboard for all BBVariables found in class. This is done every time the blackboard of the Task is set to a new value
 		void UpdateBBFields(Blackboard bb){
 			BBVariable.SetBBFields(bb, this);
@@ -361,13 +338,26 @@ namespace NodeCanvas{
 		}
 
 		//Helper to ensure that BBVariables are not null.
-		void CheckNullBBFields(){
-			BBVariable.CheckNullBBFields(this);
+		void InitBBFields(){
+			BBVariable.InitBBFields(this);
 		}
 
-		public override string ToString(){
+		sealed public override string ToString(){
 			return string.Format("{0} ({1})", taskName, taskInfo);
 		}
+
+
+		public void DrawGizmos(){
+			OnGizmos();
+		}
+
+		public void DrawGizmosSelected(){
+			OnGizmosSelected();
+		}
+
+		virtual protected void OnGizmos(){}
+		virtual protected void OnGizmosSelected(){}
+
 
 		////////////////////////////////////////
 		///////////GUI AND EDITOR STUFF/////////
@@ -376,27 +366,46 @@ namespace NodeCanvas{
 
 		[SerializeField]
 		private bool _unfolded = true;
-		private static Task _copyTask;
+		private Texture2D _icon;
+
+		public Texture2D icon{
+			get
+			{
+				if (_icon == null){
+					var iconAtt = this.GetType().NCGetAttribute(typeof(IconAttribute), true) as IconAttribute;
+					if (iconAtt != null) _icon = (Texture2D)Resources.Load(iconAtt.iconName);
+				}
+				return _icon;
+			}
+		}
 
 		public bool unfolded{
 			get {return _unfolded;}
 			set {_unfolded = value;}
 		}
 
-		public static Task copyTask{
-			get {return _copyTask;}
-			set {_copyTask = value;}
+		public System.ObsoleteAttribute isObsolete{
+			get	{ return this.GetType().NCGetAttribute(typeof(System.ObsoleteAttribute), true) as System.ObsoleteAttribute;	}
 		}
 
-		virtual protected void Reset(){
+		public static Task copiedTask{get;set;}
+
+		protected void Reset(){
 			enabled = false;
-			CheckNullBBFields();
+			InitBBFields();
+			OnEditorReset();
 		}
 
-		virtual protected void OnValidate(){
+		protected void OnValidate(){
 			enabled = false;
-			CheckNullBBFields();
+			InitBBFields();
+			OnEditorValidate();
+			if (isObsolete != null)
+				Debug.LogWarning(string.Format("You are using an obsolete Task '{0}': <b>'{1}'</b>", taskName, isObsolete.Message));
 		}
+
+		virtual protected void OnEditorReset(){}
+		virtual protected void OnEditorValidate(){}
 
 		virtual public void ShowInspectorGUI(){
 
@@ -416,10 +425,10 @@ namespace NodeCanvas{
 			if (this == null)
 				return null;
 
-			Task copiedTask = (Task)go.AddComponent(this.GetType());
-			Undo.RegisterCreatedObjectUndo(copiedTask, "Copy Task");
-			UnityEditor.EditorUtility.CopySerialized(this, copiedTask);
-			return copiedTask;
+			Task newTask = (Task)go.AddComponent(this.GetType());
+			Undo.RegisterCreatedObjectUndo(newTask, "Copy Task");
+			UnityEditor.EditorUtility.CopySerialized(this, newTask);
+			return newTask;
 		}
 
 		///Draw an auto editor inspector for this task.
@@ -493,6 +502,18 @@ namespace NodeCanvas{
 		#endif
 
 
+		///Designates what type of component to get and set the agent from the agent itself on initialization.
+		///That component type is also considered required for correct task init.
+		[AttributeUsage(AttributeTargets.Class)]
+		protected class AgentTypeAttribute : Attribute{
+
+			public System.Type type;
+
+			public AgentTypeAttribute(System.Type type){
+				this.type = type;
+			}
+		}
+
 		///If the field is deriving Component then it will be retrieved from the agent. The field is also considered Required for correct initialization
 		[AttributeUsage(AttributeTargets.Field)]
 		protected class GetFromAgentAttribute : Attribute{
@@ -507,18 +528,6 @@ namespace NodeCanvas{
 
 			public EventListenerAttribute(params string[] args){
 				this.messages = args;
-			}
-		}
-
-		///Designates what type of component to get and set the agent from the agent itself on initialization.
-		///That component type is also considered required for correct task init.
-		[AttributeUsage(AttributeTargets.Class)]
-		protected class AgentTypeAttribute : Attribute{
-
-			public System.Type type;
-
-			public AgentTypeAttribute(System.Type type){
-				this.type = type;
 			}
 		}
 	}

@@ -10,9 +10,6 @@ namespace NodeCanvas.DialogueTrees{
 		[SerializeField]
 		private string _actorName;
 
-		[SerializeField]
-		private string _speech;
-
 		public Texture2D portrait;
 		public Color dialogueColor = Color.white;
 		public Vector3 dialogueOffset;
@@ -24,17 +21,14 @@ namespace NodeCanvas.DialogueTrees{
 			set {_actorName = value;}
 		}
 
-		public string speech{
-			get {return _speech;}
-			set {_speech = value;}
-		}
+		public string speech{get;set;}
 
 		///The final position for the dialogue to show based on settings
 		public Vector3 dialoguePosition{
 			get{return Vector3.Scale(transform.position + dialogueOffset, transform.localScale);}
 		}
 
-		private void Reset(){
+		void Reset(){
 			actorName = gameObject.name;
 		}
 
@@ -65,7 +59,7 @@ namespace NodeCanvas.DialogueTrees{
 				speech = statement.text;
 				while(timer < statement.audio.length){
 					timer += Time.deltaTime;
-					yield return 0;
+					yield return null;
 				}
 
 				DestroyImmediate(audioSource);
@@ -89,7 +83,7 @@ namespace NodeCanvas.DialogueTrees{
 			callback();
 		}
 
-		private void OnDrawGizmos(){
+		void OnDrawGizmos(){
 			Gizmos.DrawLine(transform.position, dialoguePosition);
 		}
 

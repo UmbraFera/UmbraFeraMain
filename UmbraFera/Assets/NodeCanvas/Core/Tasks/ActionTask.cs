@@ -11,47 +11,31 @@ namespace NodeCanvas{
 	abstract public class ActionTask : Task{
 
 		[SerializeField] [HideInInspector]
-		private float _actionDelay;
-		private float _elapsedTime;
-		private float _estimatedLength;
-		private bool _isRunning;
-		private bool _isPaused;
+		private float _deltaDelay;
 		private System.Action<System.ValueType> FinishCallback;
 
-		public float actionDelay{
-			get {return _actionDelay;}
-			set {_actionDelay = value;}
+		public float deltaDelay{
+			get {return _deltaDelay;}
+			set {_deltaDelay = value;}
 		}
 
 		///The time in seconds this action is running if at all
-		public float elapsedTime{
-			get {return _elapsedTime;}
-			private set {_elapsedTime = value;}
-		}
+		public float elapsedTime{get; private set;}
 
 		///Is the action currently running?
-		public bool isRunning{
-			get {return _isRunning;}
-			private set {_isRunning = value;}
-		}
+		public bool isRunning{get; private set;}
 
 		///Is the action currently paused?
-		public bool isPaused{
-			get {return _isPaused;}
-			private set {_isPaused = value;}
-		}
+		public bool isPaused{get; private set;}
 
-		///Optional override.The estimated length this action will take to complete
-		virtual public float estimatedLength{
-			get {return _estimatedLength;}
-			private set {_estimatedLength = value;}
-		}
+		///The estimated length this action will take to complete
+		virtual public float estimatedLength{get; private set;}
 
 		sealed public override string taskInfo{
 			get {return (agentIsOverride? "* " : "") + info;}
 		}
 
-		//Editor: Override in your own actions to provide the visible editor action info whenever it's shown
+		//Override in your own actions to provide the visible editor action info whenever it's shown
 		virtual protected string info{
 			get {return taskName;}
 		}
@@ -64,7 +48,6 @@ namespace NodeCanvas{
 
 			ExecuteAction(agent, this.blackboard, callback);
 		}
-
 
 		///Executes the action for the provided agent, optionaly providing a blackboard and a callback function that will be called with a ValueType argument
 		///once the action is completed. The argument in most cases will be a boolean specifying if the action did succeed or failed.
@@ -166,7 +149,7 @@ namespace NodeCanvas{
 		#if UNITY_EDITOR
 
 		///Editor: Draw the action's controls.
-		override public void ShowInspectorGUI(){
+		sealed override public void ShowInspectorGUI(){
 
 			if (Application.isPlaying){
 				if (elapsedTime > 0)
@@ -191,36 +174,6 @@ namespace NodeCanvas{
 			DrawDefaultInspector();
 		}
 
-
-/*
-		public static string CreateNewActionScript(string name){
-			
-			string template =
-			"using UnityEngine;\n" +
-			"using NodeCanvas;\n" +
-			"using NodeCanvas.Variables;\n\n" + 
-			"public class " + name + " : ActionTask {\n\n" +
-			"\tprotected override void OnExecute(){\n" +
-			"\t\tEndAction(true);\n" +
-			"\t}\n\n" +
-			"\tprotected override void OnUpdate(){\n" +
-			"\t\t\n" + 
-			"\t}\n\n" +
-			"\tprotected override void OnStop(){\n" +
-			"\t\t\n" +
-			"\t}\n" + 
-			"}";
-
-			bool dirExists = System.IO.Directory.Exists(Application.dataPath + "/MyNCActions/");
-			if (!dirExists)
-				System.IO.Directory.CreateDirectory(Application.dataPath + "/MyNCActions/");
-
-			var scriptPath = Application.dataPath + "/MyNCActions/" + name + ".cs";
-			System.IO.File.WriteAllText(scriptPath, template);
-			UnityEditor.AssetDatabase.ImportAsset("Assets/MyNCActions/" + name + ".cs");
-			return scriptPath;
-		}
-*/
 		#endif
 	}
 }

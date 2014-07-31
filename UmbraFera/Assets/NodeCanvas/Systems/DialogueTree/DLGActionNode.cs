@@ -79,12 +79,6 @@ namespace NodeCanvas.DialogueTrees{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 		
-		protected override void OnNodeGUI(){
-
-			base.OnNodeGUI();
-			GUILayout.Label(action? action.taskInfo : "No Action");
-		}
-
 		protected override void OnNodeInspectorGUI(){
 			
 			base.OnNodeInspectorGUI();

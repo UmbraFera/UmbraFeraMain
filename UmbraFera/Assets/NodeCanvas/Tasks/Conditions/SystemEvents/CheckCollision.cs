@@ -20,7 +20,10 @@ namespace NodeCanvas.Conditions{
 		public bool specifiedTagOnly;
 		[TagField]
 		public string objectTag = "Untagged";
-		public BBGameObject saveGameObjectAs = new BBGameObject{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBGameObject saveGameObjectAs;
+		[BlackboardOnly]
+		public BBVector saveContactPoint;
 
 		private bool stay;
 
@@ -34,19 +37,20 @@ namespace NodeCanvas.Conditions{
 			return false;
 		}
 
-		void OnCollisionEnter(Collision info){
+		public void OnCollisionEnter(Collision info){
 			
 			Debug.Log("STAY");
 			if (!specifiedTagOnly || info.gameObject.tag == objectTag){
 				stay = true;
 				if (checkType == CheckTypes.CollisionEnter || checkType == CheckTypes.CollisionStay){
 					saveGameObjectAs.value = info.gameObject;
+					saveContactPoint.value = info.contacts[0].point;
 					YieldReturn(true);
 				}
 			}
 		}
 
-		void OnCollisionExit(Collision info){
+		public void OnCollisionExit(Collision info){
 			
 			if (!specifiedTagOnly || info.gameObject.tag == objectTag){
 				stay = false;

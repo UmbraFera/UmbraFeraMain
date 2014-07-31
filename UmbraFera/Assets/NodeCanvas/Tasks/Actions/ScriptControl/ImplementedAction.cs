@@ -26,7 +26,7 @@ namespace NodeCanvas.Actions{
 			script = agent.GetComponent(scriptName);
 			if (script == null)
 				return "Can't find script";
-			method = script.GetType().GetMethod(methodName);
+			method = script.GetType().NCGetMethod(methodName);
 			if (method == null)
 				return "Method not found";
 			return null;
@@ -82,12 +82,11 @@ namespace NodeCanvas.Actions{
 					methodName = method.Name;
 					if (Application.isPlaying)
 						OnInit();
-				});
+				}, 0, false);
 			}
 
-			if (!string.IsNullOrEmpty(methodName)){
+			if (!string.IsNullOrEmpty(methodName))
 				UnityEditor.EditorGUILayout.LabelField("Selected Action Method:", methodName);
-			}
 		}
 		
 		#endif

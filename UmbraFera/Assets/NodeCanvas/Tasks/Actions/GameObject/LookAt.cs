@@ -15,17 +15,11 @@ namespace NodeCanvas.Actions{
 			get {return "LookAt " + lookTarget;}
 		}
 
-		protected override void OnExecute(){
-			DoLook();
-		}
-
-		protected override void OnUpdate(){
-			DoLook();
-		}
+		protected override void OnExecute(){DoLook();}
+		protected override void OnUpdate(){DoLook();}
 
 		void DoLook(){
-
-			Vector3 lookPos = lookTarget.value.transform.position;
+			var lookPos = lookTarget.value.transform.position;
 			lookPos.y = agent.transform.position.y;
 			agent.transform.LookAt(lookPos);
 

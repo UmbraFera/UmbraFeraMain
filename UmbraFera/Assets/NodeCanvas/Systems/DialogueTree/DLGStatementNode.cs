@@ -39,7 +39,7 @@ namespace NodeCanvas.DialogueTrees{
 		protected override void OnNodeGUI(){
 
 			base.OnNodeGUI();
-			GUIStyle labelStyle = new GUIStyle(GUI.skin.GetStyle("label"));
+			var labelStyle = new GUIStyle(GUI.skin.GetStyle("label"));
 			labelStyle.wordWrap = true;
 
 			var displayText = statement.text.Length > 60? statement.text.Substring(0, 60) + "..." : statement.text;

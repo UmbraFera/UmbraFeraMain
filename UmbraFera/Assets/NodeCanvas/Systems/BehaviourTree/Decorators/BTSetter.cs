@@ -33,8 +33,6 @@ namespace NodeCanvas.BehaviourTrees{
 
 			if (!string.IsNullOrEmpty(agentToSet.dataName) || agentToSet.value != null)
 				GUILayout.Label("Agent " + agentToSet);
-			else
-				GUILayout.Label("Identity Agent");
 		}
 
 		#endif

@@ -19,25 +19,28 @@ namespace NodeCanvas.Conditions{
 
 		protected override string OnInit(){
 
-			var eventInfo = script.GetType().GetEvent(eventName);
+			var eventInfo = script.GetType().NCGetEvent(eventName);
+			if (eventInfo == null)
+				return "Event was not found";
+				
 			MethodInfo m;
 			System.Delegate handler;
 			if (eventInfo.EventHandlerType == typeof(System.EventHandler)){
-				m = this.GetType().GetMethod("DefaultRaised", BindingFlags.Instance | BindingFlags.NonPublic);
-				handler = System.Delegate.CreateDelegate(eventInfo.EventHandlerType, this, m);
+				m = this.GetType().NCGetMethod("DefaultRaised");
+                handler = NCReflection.NCCreateDelegate(eventInfo.EventHandlerType, this, m);
 			} else {
-				m = this.GetType().GetMethod("Raised", BindingFlags.Instance | BindingFlags.NonPublic);
-				handler = System.Delegate.CreateDelegate(eventInfo.EventHandlerType, this, m);
+				m = this.GetType().NCGetMethod("Raised");
+                handler = NCReflection.NCCreateDelegate(eventInfo.EventHandlerType, this, m);
 			}
 			eventInfo.AddEventHandler(script, handler);
 			return null;
 		}
 
-		void DefaultRaised(object sender, System.EventArgs e){
+		public void DefaultRaised(object sender, System.EventArgs e){
 			Raised();
 		}
 
-		void Raised(){
+		public void Raised(){
 			YieldReturn(true);
 		}
 

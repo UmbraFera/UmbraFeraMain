@@ -84,33 +84,11 @@ namespace NodeCanvas.StateMachines{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 
-		[SerializeField]
-		private bool tempIsUpdated;
-
 		protected override void OnCreate(){
 			actionList = gameObject.AddComponent<ActionList>();
 			actionList.runInParallel = true;
-			tempIsUpdated = true;
 		}
-
-		///TEMPORAARY UPDATE
-		protected override void OnValidate(){
-			base.OnValidate();
-			if (!tempIsUpdated){
-				tempIsUpdated = true;
-				actionList.runInParallel = true;
-			}
-		}
-		/////
-		
-		protected override void OnNodeGUI(){
-
-			base.OnNodeGUI();
-
-			if (actionList)
-				GUILayout.Label(actionList.taskInfo);
-		}
-
+	
 		protected override void OnNodeInspectorGUI(){
 
 			if (!actionList)

@@ -59,7 +59,7 @@ namespace NodeCanvas.BehaviourTrees{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 		
-		[UnityEditor.MenuItem("NC/Create BehaviourTree")]
+		[UnityEditor.MenuItem("Window/NodeCanvas/Create Behaviour Tree")]
 		public static void CreateBehaviourTree(){
 			BehaviourTree newBT = new GameObject("BehaviourTree").AddComponent(typeof(BehaviourTree)) as BehaviourTree;
 			UnityEditor.Selection.activeObject = newBT;

@@ -6,9 +6,11 @@ namespace NodeCanvas.BehaviourTrees{
 	[AddComponentMenu("")]
 	[Name("Access")]
 	[Category("Decorators")]
-	[Description("Execute and return the child node status if the condition is true, otherwise return Failure. The condition is evaluated only once in the first Tick, when the node is not already Running. So this acts like a trigger access")]
+	[Description("Execute and return the child node status if the condition is true, otherwise return Failure. The condition is evaluated only once in the first Tick and when the node is not already Running unless it is set as 'Dynamic' in which case it will revaluate even while running")]
 	[Icon("Accessor")]
 	public class BTAccessor : BTDecorator, ITaskAssignable {
+
+		public bool dynamic;
 
 		[SerializeField]
 		private ConditionTask _condition;
@@ -35,14 +37,22 @@ namespace NodeCanvas.BehaviourTrees{
 				return Status.Resting;
 
 			if (!condition)
+				return decoratedConnection.Execute(agent, blackboard);
+
+			if (dynamic)
+			{
+				if (condition.CheckCondition(agent, blackboard))
+					return decoratedConnection.Execute(agent, blackboard);
+				decoratedConnection.ResetConnection();
 				return Status.Failure;
-
-			if (status != Status.Running && condition.CheckCondition(agent, blackboard)){
-				accessed = true;
-				//decoratedConnection.ResetConnection();
 			}
+			else
+			{
+				if (status != Status.Running && condition.CheckCondition(agent, blackboard))
+					accessed = true;
 
-			return accessed? decoratedConnection.Execute(agent, blackboard) : Status.Failure;
+				return accessed? decoratedConnection.Execute(agent, blackboard) : Status.Failure;
+			}
 		}
 
 		protected override void OnReset(){
@@ -54,12 +64,11 @@ namespace NodeCanvas.BehaviourTrees{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 		
-		protected override void OnNodeGUI(){
-
-			GUILayout.Label(condition != null ? condition.taskInfo : "No Condition");
-		}
-
 		protected override void OnNodeInspectorGUI(){
+
+			dynamic = UnityEditor.EditorGUILayout.Toggle("Dynamic", dynamic);
+
+			EditorUtils.Separator();
 
 			if (condition == null){
 				EditorUtils.TaskSelectionButton(gameObject, typeof(ConditionTask), delegate(Task c){condition = (ConditionTask)c;});

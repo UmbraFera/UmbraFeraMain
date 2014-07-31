@@ -35,12 +35,12 @@ namespace NodeCanvas.DialogueTrees{
 		public DialogueActor actor;
 		public Statement statement;
 		
-		public Action DoneSpeaking;
+		public Action Continue;
 
 		public DialogueSpeechInfo(DialogueActor actor, Statement statement, Action callback){
 			this.actor = actor;
 			this.statement = statement;
-			this.DoneSpeaking = callback;
+			this.Continue = callback;
 		}
 	}
 }

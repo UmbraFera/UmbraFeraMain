@@ -10,18 +10,18 @@ namespace NodeCanvas.BehaviourTrees{
 	[AddComponentMenu("")]
 	[Name("Debug")]
 	[Category("Decorators")]
-	[Description("Use this node to pause the Behaviour Tree as well as log a UI label at the position of the agent when the node is in the selected status.")]
+	[Description("Use this node to add a break point to the Behaviour Tree as well as log a UI label at the position of the agent when the node is in the selected status.")]
 	[Icon("Log")]
 	public class BTDebugger : BTDecorator{
 
-		public bool breakPoint;
+		public bool breakPoint = true;
 		public bool pauseUnity;
 
-		public Status stateToLog = Status.Success;
+		public Status statusToLog = Status.Success;
 		public string log;
 
-		public bool forceReturnState;
-		public Status forceState = Status.Success;
+		public bool forceReturnStatus;
+		public Status forceStatus = Status.Success;
 
 		private Component currentAgent;
 
@@ -51,11 +51,11 @@ namespace NodeCanvas.BehaviourTrees{
 			}
 			
 			if (decoratedConnection == null)
-				return forceReturnState? forceState : status;
+				return forceReturnStatus? forceStatus : status;
 
 			status = decoratedConnection.Execute(agent, blackboard);
 
-			return forceReturnState? forceState : status;
+			return forceReturnStatus? forceStatus : status;
 		}
 
 		void OnGUI(){
@@ -63,7 +63,7 @@ namespace NodeCanvas.BehaviourTrees{
 			if (currentAgent == null || Camera.main == null)
 				return;
 
-			if (status != stateToLog)
+			if (status != statusToLog)
 				return;
 
 			Vector2 point = Camera.main.WorldToScreenPoint(currentAgent.transform.position + new Vector3(0f, -0.5f, 0f));
@@ -100,20 +100,20 @@ namespace NodeCanvas.BehaviourTrees{
 		protected override void OnNodeInspectorGUI(){
 
 			GUILayout.BeginVertical("box");
-			forceReturnState = EditorGUILayout.Toggle("Force Return Status", forceReturnState);
-			if (forceReturnState)
-				forceState = (Status)EditorGUILayout.EnumPopup("Force Status", forceState);
+			breakPoint = EditorGUILayout.Toggle("Break Point", breakPoint);
+			if (breakPoint)
+				pauseUnity = EditorGUILayout.Toggle("Also Pause Unity", pauseUnity);
 			GUILayout.EndVertical();
 
 			GUILayout.BeginVertical("box");
-			stateToLog = (Status)EditorGUILayout.EnumPopup("When in Status", stateToLog);
+			statusToLog = (Status)EditorGUILayout.EnumPopup("When in Status", statusToLog);
 			log = EditorGUILayout.TextField("UI Label", log);
 			GUILayout.EndVertical();
 
 			GUILayout.BeginVertical("box");
-			breakPoint = EditorGUILayout.Toggle("Break Point", breakPoint);
-			if (breakPoint)
-				pauseUnity = EditorGUILayout.Toggle("Also Pause Unity", pauseUnity);
+			forceReturnStatus = EditorGUILayout.Toggle("Force Return Status", forceReturnStatus);
+			if (forceReturnStatus)
+				forceStatus = (Status)EditorGUILayout.EnumPopup("Force Status", forceStatus);
 			GUILayout.EndVertical();
 
 			if (graph.isRunning){

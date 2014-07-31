@@ -26,7 +26,7 @@ namespace NodeCanvas.StateMachines{
 		[SerializeField]
 		private string failureEvent;
 		
-		private bool instanceChecked;
+		private bool instantiated;
 		private bool BTIsFinished;
 
 		private BehaviourTree nestedBT{
@@ -38,6 +38,10 @@ namespace NodeCanvas.StateMachines{
 		public Graph nestedGraph{
 			get {return nestedBT;}
 			set {nestedBT = (BehaviourTree)value;}
+		}
+
+		protected override void OnAwake(){
+			CheckInstance();
 		}
 
 		protected override void Enter(){
@@ -77,12 +81,12 @@ namespace NodeCanvas.StateMachines{
 				nestedBT.PauseGraph();
 		}
 
-		private void CheckInstance(){
+		void CheckInstance(){
 
-			if (!instanceChecked && nestedBT != null && nestedBT.transform.parent != graph.transform){
+			if (!instantiated && nestedBT != null && nestedBT.transform.parent != graph.transform){
 				nestedBT = (BehaviourTree)Instantiate(nestedBT, transform.position, transform.rotation);
 				nestedBT.transform.parent = graph.transform;
-				instanceChecked = true;
+				instantiated = true;
 			}
 		}
 

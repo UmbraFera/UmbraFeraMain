@@ -3,6 +3,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
+	[System.Obsolete("Use Get Property instead")]
 	[Category("GameObject")]
 	[AgentType(typeof(Transform))]
 	public class GetGameObjectPosition : ActionTask {

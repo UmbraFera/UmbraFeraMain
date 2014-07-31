@@ -44,8 +44,8 @@ namespace NodeCanvasEditor{
 
 					GUILayout.BeginVertical("textfield");
 					
-					if (member.subscribedMono != null)
-						EditorGUILayout.LabelField("Member", member.subscribedMono.ToString());
+					if (member.subscribedObject != null)
+						EditorGUILayout.LabelField("Member", member.subscribedObject.ToString());
 					
 					if (member.subscribedFunction != null)
 						EditorGUILayout.LabelField("Function", member.subscribedFunction.ToString());

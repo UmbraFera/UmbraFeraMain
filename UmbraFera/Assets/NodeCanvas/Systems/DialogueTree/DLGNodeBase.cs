@@ -12,7 +12,7 @@ namespace NodeCanvas.DialogueTrees{
 		private string _actorName = "_Owner";
 
 		public override string nodeName{
-			get{return "#" + ID;}
+			get{return "";}
 		}
 
 		public override int maxInConnections{
@@ -93,6 +93,11 @@ namespace NodeCanvas.DialogueTrees{
 			get{return finalBlackboard;}
 		}
 
+		//Interface implementation. Returns Dialogue elapsedTime
+		public float elapsedTime{
+			get{return graph.elapsedTime;}
+		}
+
 		//Interface implementation
 		public void SendTaskOwnerDefaults(){
 			foreach (Task task in GetComponentsInChildren<Task>(true))
@@ -117,11 +122,8 @@ namespace NodeCanvas.DialogueTrees{
 		///////////GUI AND EDITOR STUFF/////////
 		////////////////////////////////////////
 		#if UNITY_EDITOR
-/*		
-		protected override void OnNodeGUI(){
 
-		}
-*/
+
 		protected override void OnNodeInspectorGUI(){
 
 			GUI.backgroundColor = EditorUtils.lightBlue;

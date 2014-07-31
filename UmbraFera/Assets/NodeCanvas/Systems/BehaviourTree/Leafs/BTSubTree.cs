@@ -12,7 +12,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 		[SerializeField]
 		private BehaviourTree _nestedTree;
-		private bool instanceChecked;
+		private bool instantiated;
 
 		private BehaviourTree nestedTree{
 			get {return _nestedTree;}
@@ -37,6 +37,10 @@ namespace NodeCanvas.BehaviourTrees{
 
 		/////////
 		/////////
+
+		protected override void OnAwake(){
+			CheckInstance();
+		}
 
 		protected override Status OnExecute(Component agent, Blackboard blackboard){
 
@@ -75,12 +79,12 @@ namespace NodeCanvas.BehaviourTrees{
 			}
 		}
 
-		private void CheckInstance(){
+		void CheckInstance(){
 
-			if (!instanceChecked && nestedTree != null && nestedTree.transform.parent != graph.transform){
+			if (!instantiated && nestedTree != null && nestedTree.transform.parent != graph.transform){
 				nestedTree = (BehaviourTree)Instantiate(nestedTree, transform.position, transform.rotation);
 				nestedTree.transform.parent = graph.transform;
-				instanceChecked = true;	
+				instantiated = true;	
 			}
 		}
 

@@ -19,7 +19,7 @@ namespace NodeCanvas.Conditions{
 			return false;
 		}
 
-		void OnCustomEvent(string receivedEvent){
+		public void OnCustomEvent(string receivedEvent){
 
 			if (receivedEvent == eventName.value)
 				YieldReturn(true);

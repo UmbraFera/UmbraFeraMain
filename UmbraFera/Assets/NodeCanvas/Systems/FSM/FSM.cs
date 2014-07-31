@@ -51,7 +51,8 @@ namespace NodeCanvas.StateMachines{
 				anyState.UpdateAnyState();
 
 			currentState.OnUpdate();
-			CallbackStay(currentState);
+			if (currentState.status == Status.Running)
+				CallbackStay(currentState);
 		}
 
 		protected override void OnGraphStoped(){
@@ -153,10 +154,10 @@ namespace NodeCanvas.StateMachines{
 			exitMethods.Clear();
 
 			foreach (MonoBehaviour mono in agent.gameObject.GetComponents<MonoBehaviour>()){
-
-				var enterMethod = mono.GetType().GetMethod("OnStateEnter", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-				var stayMethod = mono.GetType().GetMethod("OnStateUpdate", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-				var exitMethod = mono.GetType().GetMethod("OnStateExit", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                
+				var enterMethod = mono.GetType().NCGetMethod("OnStateEnter");
+				var stayMethod = mono.GetType().NCGetMethod("OnStateUpdate");
+				var exitMethod = mono.GetType().NCGetMethod("OnStateExit");
 
 				if (enterMethod != null)
 					enterMethods[mono] = enterMethod;
@@ -170,7 +171,7 @@ namespace NodeCanvas.StateMachines{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 		
-		[UnityEditor.MenuItem("NC/Create FSM")]
+		[UnityEditor.MenuItem("Window/NodeCanvas/Create FSM")]
 		public static void CreateFSM(){
 			FSM newFSM= new GameObject("FSM").AddComponent(typeof(FSM)) as FSM;
 			UnityEditor.Selection.activeObject = newFSM;

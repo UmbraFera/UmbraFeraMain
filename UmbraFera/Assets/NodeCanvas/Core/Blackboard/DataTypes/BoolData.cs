@@ -9,16 +9,22 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = (bool)value;}
+			set
+			{
+				if ((bool)value != this.value){
+					this.value = (bool)value;
+					OnValueChanged(value);
+				}
+			}
 		}
 
 		//////////////////////////
 		///////EDITOR/////////////
 		//////////////////////////
-		#if UNITY_EDITOR
 
+		#if UNITY_EDITOR
 		override public void ShowDataGUI(){
-			value = UnityEditor.EditorGUILayout.Toggle(value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+			objectValue = UnityEditor.EditorGUILayout.Toggle(value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
 		}
 
 		#endif

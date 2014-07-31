@@ -3,29 +3,29 @@ using System;
 using System.Collections;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Collections.Generic;
+//using System.Reflection;
 
 namespace NodeCanvas{
 
-	///Handles subscribers and dispatches messages. Works with MonoBehaviour subscribers and method subscribers as well.
+	///Handles subscribers and dispatches messages.
 	///If you want to debug events send and subscribers, add the EventDebugger component somewhere
 	public static class EventHandler{
 
 		public static bool logEvents;
 		public static Dictionary<string, List<SubscribedMember>> subscribedMembers = new Dictionary<string, List<SubscribedMember>>();
 
-		public static void Subscribe(MonoBehaviour mono, Enum eventEnum, int invokePriority = 0, bool unsubscribeWhenReceive = false){
-			Subscribe(mono, eventEnum.ToString(), invokePriority, unsubscribeWhenReceive);
+		public static void Subscribe(object obj, Enum eventEnum, int invokePriority = 0, bool unsubscribeWhenReceive = false){
+			Subscribe(obj, eventEnum.ToString(), invokePriority, unsubscribeWhenReceive);
 		}
 
-		///Subscribes a MonoBehaviour to an Event along with options. When the Event is dispatched a funtion
-		///with the same name as the Event will be called on the subscribed MonoBehaviour. Events are provided by an Enum or string
-		public static void Subscribe(MonoBehaviour mono, string eventName, int invokePriority = 0, bool unsubscribeWhenReceive = false){
+		///Subscribes a object to an Event along with options. When the Event is dispatched a funtion
+		///with the same name as the Event will be called on the subscribed object. Events are provided by an Enum or string
+		public static void Subscribe(object obj, string eventName, int invokePriority = 0, bool unsubscribeWhenReceive = false){
 
-			var method = mono.GetType().GetMethod(eventName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+			var method = obj.GetType().NCGetMethod(eventName, true);
 			if (method == null){
-				Debug.LogError("EventHandler: No Method with name '" + eventName + "' exists on '" + mono.GetType().Name + "' Subscribed Type");
+				Debug.LogError("EventHandler: No Method with name '" + eventName + "' exists on '" + obj.GetType().Name + "' Subscribed Type");
 				return;
 			}
 
@@ -33,16 +33,16 @@ namespace NodeCanvas{
 				subscribedMembers[eventName] = new List<SubscribedMember>();
 
 			foreach (SubscribedMember member in subscribedMembers[eventName]){
-				if (member.subscribedMono == mono){
-					Debug.LogWarning("Mono " + mono + " is allready subscribed to " + eventName);
+				if (member.subscribedObject == obj){
+					Debug.LogWarning("obj " + obj + " is allready subscribed to " + eventName);
 					return;
 				}
 			}
 
 			if (logEvents)
-				Debug.Log("@@@ " + mono + " subscribed to " + eventName);
+				Debug.Log("@@@ " + obj + " subscribed to " + eventName);
 			
-			subscribedMembers[eventName].Add(new SubscribedMember(mono, invokePriority, unsubscribeWhenReceive));
+			subscribedMembers[eventName].Add(new SubscribedMember(obj, invokePriority, unsubscribeWhenReceive));
 			subscribedMembers[eventName] = subscribedMembers[eventName].OrderBy(member => -member.invokePriority).ToList();
 		}
 
@@ -73,51 +73,51 @@ namespace NodeCanvas{
 		}
 
 
-		///Unsubscribe a MonoBehaviour member from all Events
-		public static void Unsubscribe(MonoBehaviour mono){
+		///Unsubscribe a object member from all Events
+		public static void Unsubscribe(object obj){
 
-			if (!mono)
+			if (obj == null)
 				return;
 
 			foreach (string eventName in subscribedMembers.Keys){
 				foreach (SubscribedMember member in subscribedMembers[eventName].ToArray()){
 
-					if (member.subscribedMono == mono){
+					if (member.subscribedObject == obj){
 
 						subscribedMembers[eventName].Remove(member);
 
 						if (logEvents)
-							Debug.Log("XXX " + mono + "Unsubscribed from everything!");
+							Debug.Log("XXX " + obj + "Unsubscribed from everything!");
 					}
 				}
 			}
 		}
 
-		public static void Unsubscribe(MonoBehaviour mono, Enum eventEnum){
-			Unsubscribe(mono, eventEnum.ToString());
+		public static void Unsubscribe(object obj, Enum eventEnum){
+			Unsubscribe(obj, eventEnum.ToString());
 		}		
 
-		///Unsubscribes a MonoBehaviour member from an Event
-		public static void Unsubscribe(MonoBehaviour mono, string eventName){
+		///Unsubscribes a object member from an Event
+		public static void Unsubscribe(object obj, string eventName){
 
-			if (!mono || !subscribedMembers.ContainsKey(eventName))
+			if (obj == null || !subscribedMembers.ContainsKey(eventName))
 				return;
 
 			foreach (SubscribedMember member in subscribedMembers[eventName].ToArray()){
 
-				if (member.subscribedMono == mono){
+				if (member.subscribedObject == obj){
 
 					subscribedMembers[eventName].Remove(member);
 
 					if (logEvents)
-						Debug.Log("XXX Member " + mono + " Unsubscribed from " + eventName);
+						Debug.Log("XXX Member " + obj + " Unsubscribed from " + eventName);
 
 					return;
 				}
 			}
 
 			if (logEvents)
-				Debug.Log("You tried to Unsubscribe " + mono + " from " + eventName + ", but it was never subscribed there!");
+				Debug.Log("You tried to Unsubscribe " + obj + " from " + eventName + ", but it was never subscribed there!");
 		}
 
 		//Unsubscribes a Function member from everything
@@ -145,7 +145,7 @@ namespace NodeCanvas{
 		public static bool Dispatch(string eventName, object arg = null){
 
 			if (logEvents)
-				Debug.Log(">>> Event " + eventName + " Dispatched. (" + arg.GetType() + ") Argument");
+				Debug.Log(">>> Event " + eventName + " Dispatched. (" + (arg != null? arg.GetType().Name : "" ) + ") Argument");
 
 			if (!subscribedMembers.ContainsKey(eventName)){
 				Debug.LogWarning("EventHandler: Event '" + eventName + "' was not received by anyone!");
@@ -154,44 +154,42 @@ namespace NodeCanvas{
 
 			foreach (SubscribedMember member in subscribedMembers[eventName].ToArray()){
 
-				var mono = member.subscribedMono;
+				var obj = member.subscribedObject;
 
 				//clean up by-product
-				if (mono == null && member.subscribedFunction == null){
+				if (obj == null && member.subscribedFunction == null){
 					subscribedMembers[eventName].Remove(member);
 					continue;
 				}
 
 				if (logEvents)
-					Debug.Log("<<< Event " + eventName + " Received by " + mono);
+					Debug.Log("<<< Event " + eventName + " Received by " + obj);
 
 				if (member.unsubscribeWhenReceive)
-					Unsubscribe(mono, eventName);
+					Unsubscribe(obj, eventName);
 
 				if (member.subscribedFunction != null){
 					member.subscribedFunction(arg);
 					continue;
 				}
 				
-				var method = mono.GetType().GetMethod(eventName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+				var method = obj.GetType().NCGetMethod(eventName, true);
 				if (method == null){
-					Debug.LogWarning("Method '" + eventName + "' not found on subscribed MonoBehaviour '" + mono.name + "'");
+					Debug.LogWarning("Method '" + eventName + "' not found on subscribed object '" + obj + "'");
 					continue;
 				}
 
 				var parameters = method.GetParameters();
 				if (parameters.Length > 1){
-					Debug.LogError("Subscribed function to call '" + method.Name + "' has more than one parameter on " + mono + ". It should only have one.", mono.gameObject);
+					Debug.LogError("Subscribed function to call '" + method.Name + "' has more than one parameter on " + obj + ". It should only have one.");
 					continue;
 				}
 
-				var args = arg != null && parameters.Length == 1 && parameters[0].ParameterType.IsAssignableFrom(arg.GetType()) ? new object[]{arg} : null;
+				var args = parameters.Length == 1? new object[]{arg} : null;
 				if (method.ReturnType == typeof(IEnumerator)){
-					mono.enabled = true;
-					mono.gameObject.SetActive(true);
-					MonoManager.current.StartCoroutine( (IEnumerator)method.Invoke(mono, args) );
+					MonoManager.current.StartCoroutine( (IEnumerator)method.Invoke(obj, args) );
 				} else {
-					method.Invoke(mono, args);
+					method.Invoke(obj, args);
 				}
 			}
 
@@ -201,14 +199,14 @@ namespace NodeCanvas{
 		///Describes a member to be handled by the EventHandler.
 		public class SubscribedMember{
 
-			public MonoBehaviour subscribedMono;
+			public object subscribedObject;
 			public Action<object> subscribedFunction;
 			public int invokePriority = 0;
 			public bool unsubscribeWhenReceive;
 
-			public SubscribedMember(MonoBehaviour mono, int invokePriority, bool unsubscribeWhenReceive){
+			public SubscribedMember(object obj, int invokePriority, bool unsubscribeWhenReceive){
 
-				this.subscribedMono = mono;
+				this.subscribedObject = obj;
 				this.invokePriority = invokePriority;
 				this.unsubscribeWhenReceive = unsubscribeWhenReceive;
 			}

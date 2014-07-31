@@ -26,17 +26,17 @@ namespace NodeCanvas.Conditions{
 			return false;
 		}
 
-		void OnMouseEnter(){
+		public void OnMouseEnter(){
 			if (checkType == CheckTypes.MouseEnter)
 				YieldReturn(true);
 		}
 
-		void OnMouseExit(){
+		public void OnMouseExit(){
 			if (checkType == CheckTypes.MouseExit)
 				YieldReturn(true);
 		}
 
-		void OnMouseOver(){
+		public void OnMouseOver(){
 			if (checkType == CheckTypes.MouseOver)
 				YieldReturn(true);
 		}

@@ -34,7 +34,7 @@ namespace NodeCanvas.Conditions{
 			return false;
 		}
 
-		void OnTriggerEnter(Collider other){
+		public void OnTriggerEnter(Collider other){
 			
 			if (!specifiedTagOnly || other.gameObject.tag == objectTag){
 				stay = true;
@@ -45,7 +45,7 @@ namespace NodeCanvas.Conditions{
 			}
 		}
 
-		void OnTriggerExit(Collider other){
+		public void OnTriggerExit(Collider other){
 			
 			if (!specifiedTagOnly || other.gameObject.tag == objectTag){
 				stay = false;

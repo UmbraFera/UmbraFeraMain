@@ -54,7 +54,7 @@ namespace NodeCanvas.Actions{
 
 			var point = Camera.main.WorldToScreenPoint(agent.transform.position + new Vector3(0, YOffset, 0));
 			var size = new GUIStyle("label").CalcSize(new GUIContent(log));
-			var r = new Rect(point.x - size.x /2, Screen.height - point.y/2, size.x +10, size.y);
+			var r = new Rect(point.x - size.x /2, Screen.height - point.y, size.x +10, size.y);
 			GUI.color = new Color(1f,1f,1f,0.5f);
 			GUI.DrawTexture(r, tex);
 			GUI.color = new Color(0.2f, 0.2f, 0.2f, 1);

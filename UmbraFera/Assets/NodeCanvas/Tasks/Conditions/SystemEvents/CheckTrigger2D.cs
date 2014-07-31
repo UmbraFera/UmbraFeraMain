@@ -6,7 +6,7 @@ namespace NodeCanvas.Conditions{
 
 	[Category("System Events")]
 	[Name("Check Trigger 2D")]
-	[EventListener("OnTriggerEnter2D", "OnTriggerExit2D", "OnTriggerStay2D")]
+	[EventListener("OnTriggerEnter2D", "OnTriggerExit2D")]
 	[AgentType(typeof(Collider2D))]
 	public class CheckTrigger2D : ConditionTask{
 
@@ -35,7 +35,7 @@ namespace NodeCanvas.Conditions{
 			return false;
 		}
 
-		void OnTriggerEnter2D(Collider2D other){
+		public void OnTriggerEnter2D(Collider2D other){
 			
 			if (!specifiedTagOnly || other.gameObject.tag == objectTag){
 				stay = true;
@@ -46,7 +46,7 @@ namespace NodeCanvas.Conditions{
 			}
 		}
 
-		void OnTriggerExit2D(Collider2D other){
+		public void OnTriggerExit2D(Collider2D other){
 			
 			if (!specifiedTagOnly || other.gameObject.tag == objectTag){
 				stay = false;

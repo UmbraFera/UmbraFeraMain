@@ -1,22 +1,22 @@
-﻿using System;
-
+﻿
 #if UNITY_EDITOR
 
 using UnityEditor;
 using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.IO;
-using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using NodeCanvas.Variables;
 
 namespace NodeCanvas{
 
 	//Have some commonly stuff used across most inspectors and helper functions. Keep outside of Editor folder since many runtime classes use this in #if UNITY_EDITOR
-	static public class EditorUtils{
+	public static class EditorUtils{
 
 		private static Texture2D _tex;
 		private static Texture2D tex{
@@ -102,6 +102,7 @@ namespace NodeCanvas{
 			GUI.color = Color.white;
 		}
 
+		//Used just after a textfield with no prefix to show an italic transparent text inside when empty
 		public static void TextFieldComment(string check, string comment = "Comments..."){
 			if (string.IsNullOrEmpty(check)){
 				var lastRect = GUILayoutUtility.GetLastRect();
@@ -111,14 +112,13 @@ namespace NodeCanvas{
 			}
 		}
 
-		//a Custom titlebar for tasks. Returns if the task is folded or not
+		//a Custom titlebar for tasks
 		public static Rect TaskTitlebar(Task task, bool doHide = false){
 
 			task.hideFlags = doHide? HideFlags.HideInInspector : 0;
 			
 			GUI.backgroundColor = new Color(1,1,1,0.8f);
 			GUILayout.BeginHorizontal("box");
-			GUI.backgroundColor = Color.white;
 			if (GUILayout.Button("X", GUILayout.Width(20))){
 				Undo.DestroyObjectImmediate(task);
 				return new Rect();
@@ -141,22 +141,22 @@ namespace NodeCanvas{
 			if (e.type == EventType.ContextClick && titleRect.Contains(e.mousePosition)){
 				var menu = new GenericMenu();
 				menu.AddItem(new GUIContent("Open Script"), false, delegate{AssetDatabase.OpenAsset(MonoScript.FromMonoBehaviour(task)) ;} );
-				menu.AddItem(new GUIContent("Copy"), false, delegate{Task.copyTask = task;} );
+				menu.AddItem(new GUIContent("Copy"), false, delegate{Task.copiedTask = task;} );
 				menu.AddItem(new GUIContent("Delete"), false, delegate{Undo.DestroyObjectImmediate(task);} );
 				menu.ShowAsContext();
 				e.Use();
 			}
+
+			if (e.button == 0 && e.type == EventType.MouseDown && titleRect.Contains(e.mousePosition))
+				e.Use();
 
 			if (e.button == 0 && e.type == EventType.MouseUp && titleRect.Contains(e.mousePosition)){
 				task.unfolded = !task.unfolded;
 				e.Use();
 			}
 
-			if (task.unfolded){
+			if (task.unfolded)
 				task.ShowInspectorGUI();
-				//if (task.taskDescription != string.Empty)
-				//	EditorGUILayout.HelpBox(task.taskDescription, MessageType.Info);
-			}
 				
 			return titleRect;
 		}
@@ -196,6 +196,14 @@ namespace NodeCanvas{
 
 		//For generic automatic editors. Passing a MemberInfo will also check for custom attributes
 		public static object GenericField(string name, object value, System.Type t, MemberInfo member = null){
+
+			if (t == null){
+				GUILayout.Label("NO TYPE PROVIDED!");
+				return null;
+			}
+
+			if (value == null && t != null && t.GetConstructor(Type.EmptyTypes) != null && (typeof(UnityEngine.Object)).IsAssignableFrom(t) == false)
+				value = Activator.CreateInstance(t);
 
 			name = CamelCaseToWords(name);
 
@@ -254,6 +262,13 @@ namespace NodeCanvas{
 			if (t == typeof(Vector4))
 				return EditorGUILayout.Vector4Field(name, (Vector3)value);
 
+			if (t == typeof(Quaternion)){
+				var quat = (Quaternion)value;
+				var vec4 = new Vector4(quat.x, quat.y, quat.z, quat.w);
+				vec4 = EditorGUILayout.Vector4Field(name, vec4);
+				return new Quaternion(vec4.x, vec4.y, vec4.z, vec4.w);
+			}
+
 			if (t == typeof(Color))
 				return EditorGUILayout.ColorField(name, (Color)value);
 
@@ -269,12 +284,13 @@ namespace NodeCanvas{
 			if (t == typeof(LayerMask))
 				return LayerMaskField(name, (LayerMask)value);
 
-			if (typeof(System.Enum).IsAssignableFrom(t))
+			if (typeof(System.Enum).IsAssignableFrom(t)){
+				if (value != null && value.GetType() == typeof(string))
+					return StringPopup(name, (string)value, Enum.GetNames(t).ToList(), false, false );
 				return EditorGUILayout.EnumPopup(name, (System.Enum)value);
+			}
 
 			if (typeof(BBVariable).IsAssignableFrom(t)){
-				if (value == null)
-					value = Activator.CreateInstance(t);
 				return BBVariableField(name, (BBVariable)value, member);
 			}
 
@@ -285,13 +301,9 @@ namespace NodeCanvas{
 				return EditorGUILayout.ObjectField(name, (UnityEngine.Object)value, t, true);
 
 			if (typeof(IList).IsAssignableFrom(t)){
-				if (value == null)
-					value = Activator.CreateInstance(t);
-				return ListEditor(name, (IList)value, t.GetGenericArguments()[0]);
+				if (!t.IsArray)
+					return ListEditor(name, (IList)value, t.GetGenericArguments()[0]);
 			}
-
-			if (value == null && t != null)
-				value = Activator.CreateInstance(t);
 
 			GUILayout.BeginVertical();
 			GUILayout.Label(TypeName(t));
@@ -362,6 +374,8 @@ namespace NodeCanvas{
 		//Convert camelCase to words as the name implies.
 		public static string CamelCaseToWords(string s){
 
+			if (string.IsNullOrEmpty(s))
+				return s;
 			s = s.Substring(0, 1).ToUpper() + s.Substring(1);
 			return Regex.Replace(s, @"(\B[A-Z])", @" $1");
 		}
@@ -390,8 +404,10 @@ namespace NodeCanvas{
 
 					dataNames.Add("/ ");
 					foreach (KeyValuePair<string, Blackboard> pair in Blackboard.allBlackboards){
+						
 						if (pair.Value == bbVar.bb || !pair.Value.isGlobal)
 							continue;
+
 						foreach (string dName in pair.Value.GetDataNames(bbVar.varType))
 							dataNames.Add(pair.Key + "/" + dName);
 					}
@@ -639,19 +655,18 @@ namespace NodeCanvas{
 		}
 
 
-		//Shows a button that when click pops a context menu with a list of components deriving the type specified. When something is selected the callback is called
-		//Passing null target gameObject creates a new one
+		//Shows a button that when clicked, pops a context menu with a list of tasks deriving the base type specified. When something is selected the callback is called
 		public static void TaskSelectionButton(GameObject target, Type baseType, Action<Task> callback, bool hide = false){
 
 			GUILayout.BeginHorizontal();
 			GUI.backgroundColor = lightBlue;
 
-			if (GUILayout.Button("Add " + CamelCaseToWords( TypeName(baseType) ) )){
+			if (GUILayout.Button("Add " + CamelCaseToWords(baseType.Name) )){
 
 				Action<Type> ContextAction = delegate (Type script){
 
 					if (!target)
-						target = new GameObject(baseType.ToString());
+						target = new GameObject(baseType.Name);
 
 					var newTask = target.AddComponent(script) as Task;
 					Undo.RegisterCreatedObjectUndo(newTask, "New Task");
@@ -664,9 +679,9 @@ namespace NodeCanvas{
 				ShowTypeSelectionMenu(baseType, ContextAction);
 			}
 
-			if (Task.copyTask != null && baseType.IsAssignableFrom(Task.copyTask.GetType())){
+			if (Task.copiedTask != null && baseType.IsAssignableFrom(Task.copiedTask.GetType())){
 				if (GUILayout.Button("P", GUILayout.Width(20) ))
-					callback( Task.copyTask.CopyTo(target) );
+					callback( Task.copiedTask.CopyTo(target) );
 			}
 
 			GUI.backgroundColor = Color.white;
@@ -681,7 +696,7 @@ namespace NodeCanvas{
 				};
 
 				var scriptInfos = GetAllScriptsOfTypeCategorized(baseType);
-				GenericMenu menu= new GenericMenu();
+				var menu = new GenericMenu();
 
 				foreach (ScriptInfo script in scriptInfos){
 					if (string.IsNullOrEmpty(script.category))
@@ -700,20 +715,28 @@ namespace NodeCanvas{
 		}
 
 
-		//Get all scripts of a type excluding the base type and those with the DoNotList attribute, from within the project categorized as a list of ScriptInfo
+		//Get all scripts of a type excluding: the base type, abstract classes, Obsolete classes and those with the DoNotList attribute, from within the project categorized as a list of ScriptInfo
 		public static List<ScriptInfo> GetAllScriptsOfTypeCategorized(Type baseType){
 
 			var allRequestedScripts = new List<ScriptInfo>();
+			var assetPaths = AssetDatabase.GetAllAssetPaths().Select(p => Strip(p, "/")).ToList();
 
 			foreach (System.Type subType in GetAssemblyTypes(baseType)){
 				
 				if (subType.GetCustomAttributes(typeof(DoNotListAttribute), false).FirstOrDefault() == null && subType.GetCustomAttributes(typeof(ObsoleteAttribute), false).FirstOrDefault() == null ){
 
+					if (typeof(MonoBehaviour).IsAssignableFrom(subType)){
+						if (!assetPaths.Contains(subType.Name+".cs") && !assetPaths.Contains(subType.Name+".js") && !assetPaths.Contains(subType.Name+".boo")){
+							Debug.LogWarning(string.Format("Class Name {0} is different from it's script name", subType.Name));
+							continue;
+						}
+					}
+
 					if (subType.IsAbstract)
 						continue;
-				
-					string scriptName = CamelCaseToWords( TypeName(subType) );
-					string scriptCategory = string.Empty;
+
+					var scriptName = CamelCaseToWords( TypeName(subType) );
+					var scriptCategory = string.Empty;
 
 					var nameAttribute = subType.GetCustomAttributes(typeof(NameAttribute), false).FirstOrDefault() as NameAttribute;
 					if (nameAttribute != null)
@@ -733,7 +756,7 @@ namespace NodeCanvas{
 			return allRequestedScripts;
 		}
 
-		//Get all types in the current loaded assemplies
+		//Get all base derived types in the current loaded assemplies, excluding the base type itself
 		public static List<System.Type> GetAssemblyTypes(System.Type baseType){
 			
 			var types = new List<System.Type>();
@@ -748,7 +771,7 @@ namespace NodeCanvas{
 			return types;
 		}
 
-		//get the right text for a type name
+		//get the right friendly name for a type
 		public static string TypeName(Type t){
 
 			if (t == null)
@@ -784,9 +807,7 @@ namespace NodeCanvas{
 		public static string Strip(string text, string before){
 
 			int index= text.LastIndexOf(before);
-			if (index >= 0)
-				return text.Substring(index + 1);
-			return text;
+			return index >= 0? text.Substring(index + 1) : text;
 		}
 
 
@@ -803,8 +824,10 @@ namespace NodeCanvas{
 					continue;
 
 				foreach (FieldInfo field in comp.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public)){
-					if (availableTypes.Contains(field.FieldType))
-						menu.AddItem(new GUIContent( TypeName(comp.GetType()) + "/" + field.Name), false, Selected, field);
+					foreach (Type t in availableTypes){
+						if (t.IsAssignableFrom(field.FieldType))
+							menu.AddItem(new GUIContent( TypeName(comp.GetType()) + "/" + field.Name), false, Selected, field);
+					}
 				}
 			}
 
@@ -817,7 +840,7 @@ namespace NodeCanvas{
 			Event.current.Use();			
 		}
 
-		public static void ShowMethodSelectionMenu(GameObject go, List<System.Type> returnTypes, List<System.Type> paramTypes, System.Action<MethodInfo> callback, bool propertiesOnly = false){
+		public static void ShowMethodSelectionMenu(GameObject go, List<System.Type> returnTypes, List<System.Type> paramTypes, System.Action<MethodInfo> callback, int maxParameters, bool propertiesOnly){
 
 			GenericMenu.MenuFunction2 Selected = delegate(object selectedMethod){
 				callback((MethodInfo)selectedMethod);
@@ -832,7 +855,7 @@ namespace NodeCanvas{
 					continue;
 
 				var methodNames = new List<string>();
-				foreach (MethodInfo method in comp.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public)){
+				foreach (MethodInfo method in comp.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public)){
 
 					if (propertiesOnly && !method.IsSpecialName)
 						continue;
@@ -854,11 +877,16 @@ namespace NodeCanvas{
 					if (!isAssignable)
 						continue;
 
+
+					if (paramTypes == null)
+						maxParameters = 0;
+
 					var parameters = method.GetParameters();
-					if (parameters.Length > 3)
+					if (parameters.Length > maxParameters && maxParameters != -1)
 						continue;
 
 					if (parameters.Length > 0){
+
 						foreach(ParameterInfo param in parameters){
 							isAssignable = false;
 							foreach (System.Type t in paramTypes){
@@ -883,8 +911,11 @@ namespace NodeCanvas{
 					}
 
 					var methodName = method.Name;
-					if (methodNames.Contains(methodName))
-						methodName += "_";
+					if (method.ReturnType == typeof(IEnumerator))
+						methodName += " (IEnumerator)";
+
+					while (methodNames.Contains(methodName))
+						methodName += " +";
 
 					menu.AddItem(new GUIContent( TypeName(comp.GetType()) + "/" + methodName), false, Selected, method);
 					methodNames.Add(methodName);
@@ -907,7 +938,7 @@ namespace NodeCanvas{
 		public static List<string> GetAvailableEvents(System.Type type){
 
 			var eventNames = new List<string>();
-			foreach(EventInfo e in type.GetEvents(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)){
+			foreach(EventInfo e in type.GetEvents(BindingFlags.Instance | BindingFlags.Public)){
 
 				if (e.EventHandlerType == typeof(System.EventHandler)){
 					eventNames.Add(e.Name);
@@ -938,7 +969,7 @@ namespace NodeCanvas{
 		//all scene names (added in build settings)
 		public static List<string> GetSceneNames(){
 
-			List<string> allSceneNames = new List<string>();
+			var allSceneNames = new List<string>();
 
 			foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes){
 
@@ -951,6 +982,28 @@ namespace NodeCanvas{
 			}
 
 			return allSceneNames;
+		}
+
+		public static GameObject NewPrefabSafeGameObject(string name, Transform parent){
+
+			var newGO = new GameObject();
+
+			#if UNITY_EDITOR
+			if (PrefabUtility.GetPrefabType(parent.gameObject) == PrefabType.Prefab){
+				var clone = PrefabUtility.InstantiatePrefab(parent.gameObject) as GameObject;
+				newGO.transform.parent = clone.transform;
+				newGO.transform.localPosition = Vector3.zero;
+				var index = newGO.transform.GetSiblingIndex();
+				var root = PrefabUtility.FindPrefabRoot(clone);
+				PrefabUtility.ReplacePrefab(root, PrefabUtility.GetPrefabParent(root), ReplacePrefabOptions.ConnectToPrefab);
+				UnityEngine.Object.DestroyImmediate(root);
+				return parent.GetChild(index).gameObject;
+			}
+			#endif
+			
+			newGO.transform.parent = parent;
+			newGO.transform.localPosition = Vector3.zero;
+			return newGO;
 		}
 
 
@@ -998,140 +1051,3 @@ namespace NodeCanvas{
 }
 
 #endif
-
-
-
-namespace NodeCanvas{
-
-	///To exclude a class from when GetAllScriptsOfType. Note: Abstract classes are not listed anyway.
-	[AttributeUsage(AttributeTargets.Class)]
-	public class DoNotListAttribute : Attribute{
-
-	}
-
-	///Use for friendlier names if class name is weird for any reason
-	[AttributeUsage(AttributeTargets.Class)]
-	public class NameAttribute : Attribute{
-
-		public string name;
-		public NameAttribute(string name){
-			this.name = name;
-		}
-	}
-
-	///Use to categorize scripts
-	[AttributeUsage(AttributeTargets.Class)]
-	public class CategoryAttribute : Attribute{
-
-		public string category;
-		public CategoryAttribute(string category){
-			this.category = category;
-		}
-	}
-
-	///Use to give a description to a node or task
-	[AttributeUsage(AttributeTargets.Class)]
-	public class DescriptionAttribute : Attribute{
-
-		public string description;
-		public DescriptionAttribute(string description){
-			this.description = description;
-		}
-	}
-
-	///When something needs an Icon (now for nodes)
-	[AttributeUsage(AttributeTargets.Class)]
-	public class IconAttribute : Attribute{
-
-		public string iconName;
-		public IconAttribute(string iconName){
-			this.iconName = iconName;
-		}
-	}	
-
-
-	///Makes the int field show as layerfield
-	[AttributeUsage(AttributeTargets.Field)]
-	public class LayerFieldAttribute : Attribute{
-
-	}
-
-	///Makes the string field show as tagfield
-	[AttributeUsage(AttributeTargets.Field)]
-	public class TagFieldAttribute : Attribute{
-
-	}
-
-	///Makes the string field show as text field with specified height
-	[AttributeUsage(AttributeTargets.Field)]
-	public class TextAreaFieldAttribute : Attribute{
-
-		public float height;
-		public TextAreaFieldAttribute(float height){
-			this.height = height;
-		}
-	}
-
-
-	///Makes the float field show as slider
-	[AttributeUsage(AttributeTargets.Field)]
-	public class SliderFieldAttribute : Attribute{
-
-		public float left;
-		public float right;
-
-		public SliderFieldAttribute(float left, float right){
-			this.left = left;
-			this.right = right;
-		}
-	}
-
-	///Helper attribute. Designates that the field is required not to be null or string.empty
-	///It can also be used on top of a BB variable field.
-	[AttributeUsage(AttributeTargets.Field)]
-	public class RequiredFieldAttribute : Attribute{
-
-	}
-
-	///Use on top of a BBGameObject or GameObject field
-	[AttributeUsage(AttributeTargets.Field)]
-	public class RequiresComponentAttribute : Attribute{
-
-		public System.Type type;
-
-		public RequiresComponentAttribute(System.Type type){
-			this.type = type;
-		}
-	}
-
-	///When auto editor layouting, starts a vertical box group
-	[AttributeUsage(AttributeTargets.Field)]
-	public class BeginGroupAttribute : Attribute{
-
-	}
-
-	///When auto editor layouting, ends a vertical box group
-	[AttributeUsage(AttributeTargets.Field)]
-	public class EndGroupAttribute : Attribute{
-
-	}
-
-
-	[Obsolete("Use [Name] instead")]
-	[AttributeUsage(AttributeTargets.Class)]
-	public class ScriptNameAttribute : Attribute{
-		public string category;
-		public ScriptNameAttribute(string category){
-			this.category = category;
-		}
-	}
-
-	[Obsolete("Use [Category] instead")]
-	[AttributeUsage(AttributeTargets.Class)]
-	public class ScriptCategoryAttribute : Attribute{
-		public string category;
-		public ScriptCategoryAttribute(string category){
-			this.category = category;
-		}
-	}
-}

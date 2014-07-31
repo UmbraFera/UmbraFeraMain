@@ -42,9 +42,8 @@ namespace NodeCanvasEditor{
 				GUILayout.EndHorizontal();
 			}
 
-			if (GUILayout.Button("Add New Actor")){
+			if (GUILayout.Button("Add New Actor"))
 				DLGTree.dialogueActorNames.Add("actor name");
-			}
 
 			GUILayout.EndVertical();
 

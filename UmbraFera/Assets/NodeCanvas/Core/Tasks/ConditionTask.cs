@@ -66,7 +66,7 @@ namespace NodeCanvas{
 		#if UNITY_EDITOR
 
 		///Editor: Show the editor GUI controls
-		override public void ShowInspectorGUI(){
+		sealed override public void ShowInspectorGUI(){
 
 			GUI.color = invertCondition? Color.white : new Color(1f,1f,1f,0.5f);
 			invertCondition = EditorGUILayout.ToggleLeft("Invert Condition", invertCondition);
@@ -85,29 +85,7 @@ namespace NodeCanvas{
 
 			DrawDefaultInspector();
 		}
-/*
-		public static string CreateNewConditionScript(string name){
-			
-			string template =
-			"using UnityEngine;\n" +
-			"using NodeCanvas;\n" +
-			"using NodeCanvas.Variables;\n\n" + 
-			"public class " + name + " : ConditionTask {\n\n" +
-			"\tprotected override bool OnCheck(){\n" +
-			"\t\treturn true;\n" +
-			"\t}\n" + 
-			"}";
 
-			bool dirExists = System.IO.Directory.Exists(Application.dataPath + "/MyNCCoditions/");
-			if (!dirExists)
-				System.IO.Directory.CreateDirectory(Application.dataPath + "/MyNCCoditions/");
-
-			var scriptPath = Application.dataPath + "/MyNCCoditions/" + name + ".cs";
-			System.IO.File.WriteAllText(scriptPath, template);
-			UnityEditor.AssetDatabase.ImportAsset("Assets/MyNCCoditions/" + name + ".cs");
-			return scriptPath;
-		}
-*/
 		#endif
 	}
 }
