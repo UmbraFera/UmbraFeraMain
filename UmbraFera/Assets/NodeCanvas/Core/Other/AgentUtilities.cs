@@ -2,15 +2,83 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+#if UNITY_4_6
+using UnityEngine.EventSystems;
+#endif
+
+
 namespace NodeCanvas{
 
 	///Automaticaly added to the agent when needed.
 	///Handles forwarding Unity event messages to the Tasks that need them as well as Custom event forwarding.
 	///A task can listen to an event message by using [EventListener(param string[])] attribute.
 	///This can also be used as a general event message forwarding for other puporses than just tasks
-	public class AgentUtilities : MonoBehaviour{
+	public class AgentUtilities : MonoBehaviour
+
+		#if UNITY_4_6
+			, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler, IDragHandler, IScrollHandler, IUpdateSelectedHandler, ISelectHandler, IDeselectHandler, IMoveHandler, ISubmitHandler
+		#endif
+	{
 
 		private List<Listener> listeners = new List<Listener>();
+
+
+		#if UNITY_4_6
+
+		public void OnPointerEnter(PointerEventData eventData){
+			Send("OnPointerEnter", eventData);
+		}
+
+		public void OnPointerExit(PointerEventData eventData){
+			Send("OnPointerExit", eventData);
+		}
+
+		public void OnPointerDown(PointerEventData eventData){
+			Send("OnPointerDown", eventData);
+		}
+
+		public void OnPointerUp(PointerEventData eventData){
+			Send("OnPointerUp", eventData);
+		}
+
+		public void OnPointerClick(PointerEventData eventData){
+			Send("OnPointerClick", eventData);
+		}
+
+		public void OnDrag(PointerEventData eventData){
+			Send("OnDrag", eventData);
+		}
+
+		public void OnDrop(BaseEventData eventData){
+			Send("OnDrop", eventData);
+		}
+
+		public void OnScroll(PointerEventData eventData){
+			Send("OnScroll", eventData);
+		}
+
+		public void OnUpdateSelected(BaseEventData eventData){
+			Send("OnUpdateSelected", eventData);
+		}
+
+		public void OnSelect(BaseEventData eventData){
+			Send("OnSelect", eventData);
+		}
+
+		public void OnDeselect(BaseEventData eventData){
+			Send("OnDeselect", eventData);
+		}
+
+		public void OnMove(AxisEventData eventData){
+			Send("OnMove", eventData);
+		}
+
+		public void OnSubmit(BaseEventData eventData){
+			Send("OnSubmit", eventData);
+		}
+
+		#endif
+
 
 		void OnAnimatorIK(int layerIndex){
 			Send("OnAnimatorIK", layerIndex);
@@ -100,10 +168,10 @@ namespace NodeCanvas{
 			Send("OnMouseUp", null);
 		}
 
-
 		void OnCustomEvent(string eventName){
 			Send("OnCustomEvent", eventName);
 		}
+
 
 		///Add a listener
 		public void Listen(object target, string toMessage){
@@ -145,6 +213,9 @@ namespace NodeCanvas{
 
 		///Call the functions
 		public void Send(string eventName, object arg){
+
+			if (listeners.Count == 0)
+				return;
 
 			foreach ( Listener listener in listeners){
 

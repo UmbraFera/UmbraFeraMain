@@ -12,32 +12,42 @@ namespace NodeCanvasEditor{
 
 		private object targetObject;
 		private System.Type targetType;
+		private Vector2 scrollPos;
 
 		void OnEnable(){
-			title = "NCObjectEditor";
+			title = "NC Object Editor";
+			//EditorApplication.playmodeStateChanged += Close;
 		}
 
 		void OnGUI(){
 
-			if (targetObject == null || targetType == null){
+			if (EditorApplication.isCompiling || targetObject == null || targetType == null){
 				Close();
 				return;
 			}
 
+			GUI.skin.label.richText = true;
+			GUILayout.BeginHorizontal();
+			GUILayout.FlexibleSpace();
+			GUILayout.Label(string.Format("<size=14><b>{0}</b></size>", NodeCanvas.EditorUtils.TypeName(targetType) ) );
+			GUILayout.FlexibleSpace();
+			GUILayout.EndHorizontal();
+
 			GUILayout.Space(10);
+			scrollPos = GUILayout.BeginScrollView(scrollPos);
 			NodeCanvas.EditorUtils.GenericField(NodeCanvas.EditorUtils.TypeName(targetType), targetObject, targetType);
+			GUILayout.EndScrollView();
 			Repaint();
 		}
 
 		public static void Show(object o, System.Type t){
 
-			PopObjectEditor window = GetWindow(typeof(PopObjectEditor)) as PopObjectEditor;
-			if (o == null)
-				o = System.Activator.CreateInstance(t);
-
+			var window = ScriptableObject.CreateInstance(typeof(PopObjectEditor)) as PopObjectEditor;
+			//if (o == null)
+			//	o = System.Activator.CreateInstance(t);
 			window.targetObject = o;
 			window.targetType = t;
-			window.Show();
+			window.ShowUtility();
 		}
 	}
 }

@@ -9,18 +9,18 @@ namespace NodeCanvas.Conditions{
 
 		[RequiredField]
 		public BBGameObject CheckTarget;
+		public CompareMethod checkType = CompareMethod.LessThan;
 		public BBFloat distance;
 
+		[SliderField(0,0.1f)]
+		public float differenceThreshold = 0.05f;
+
 		protected override string info{
-			get {return "Distance < " + distance.ToString() + " to " + CheckTarget;}
+			get {return "Distance " + TaskTools.GetCompareString(checkType) + distance + " to " + CheckTarget;}
 		}
 
 		protected override bool OnCheck(){
-
-			if (Vector3.Distance(agent.transform.position, (CheckTarget.value as GameObject).transform.position) < distance.value)
-				return true;
-
-			return false;
+			return TaskTools.Compare(Vector3.Distance(agent.transform.position, CheckTarget.value.transform.position), distance.value, checkType, differenceThreshold);
 		}
 	}
 }

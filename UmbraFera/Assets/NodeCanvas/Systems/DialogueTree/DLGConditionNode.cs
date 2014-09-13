@@ -1,8 +1,4 @@
-﻿#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 
 namespace NodeCanvas.DialogueTrees{
@@ -10,10 +6,10 @@ namespace NodeCanvas.DialogueTrees{
 	[AddComponentMenu("")]
 	[Name("Condition")]
 	[Description("Execute the first child node if a Condition is true, or the second one if that Condition is false. The Actor selected is used for the Condition check")]
-	public class DLGConditionNode : DLGNodeBase, ITaskAssignable{
+	public class DLGConditionNode : DLGNodeBase, ITaskAssignable<ConditionTask>{
 
 		[SerializeField]
-		private ConditionTask _condition;
+		private Object _condition;
 
 		[HideInInspector]
 		public Task task{
@@ -21,13 +17,17 @@ namespace NodeCanvas.DialogueTrees{
 			set {condition = (ConditionTask)value;}
 		}
 
+		public Object serializedTask{
+			get {return _condition;}
+		}
+
 		private ConditionTask condition{
-			get{return _condition;}
+			get{return _condition as ConditionTask;}
 			set
 			{
 				_condition = value;
-				if (_condition != null)
-					_condition.SetOwnerSystem(this);
+				if (value != null)
+					value.SetOwnerSystem(this);
 			}
 		}
 
@@ -80,16 +80,6 @@ namespace NodeCanvas.DialogueTrees{
 
 			if (outConnections.Count == 0)
 				GUILayout.Label("Connect Outcomes");
-		}
-
-		protected override void OnNodeInspectorGUI(){
-
-			base.OnNodeInspectorGUI();
-			if (condition == null){
-				EditorUtils.TaskSelectionButton(gameObject, typeof(ConditionTask), delegate(Task c){condition = (ConditionTask)c;});
-			} else {
-				EditorUtils.TaskTitlebar(condition);
-			}
 		}
 
 		#endif

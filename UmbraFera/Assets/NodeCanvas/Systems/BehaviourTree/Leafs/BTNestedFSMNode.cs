@@ -7,7 +7,7 @@ namespace NodeCanvas.BehaviourTrees{
 	[AddComponentMenu("")]
 	[Name("FSM")]
 	[Category("Nested")]
-	[Description("NestedFSM can be assigned an entire FSM. This node will return Running for as long as the FSM is Running. If a Success or Failure State is selected, then it will return Success or Failure as soon as the Nested FSM enters that state at which point the FSM will also be stoped. Otherwise, if the Nested FSM ends this node will return Success.")]
+	[Description("NestedFSM can be assigned an entire FSM. This node will return Running for as long as the FSM is Running. If a Success or Failure State is selected, then it will return Success or Failure as soon as the Nested FSM enters that state at which point the FSM will also be stoped. If the Nested FSM ends otherwise, this node will return Success.")]
 	[Icon("FSM")]
 	public class BTNestedFSMNode : BTNodeBase, INestedNode{
 
@@ -41,10 +41,6 @@ namespace NodeCanvas.BehaviourTrees{
 
 		/////////
 
-		protected override void OnAwake(){
-			CheckInstance();
-		}
-
 		protected override Status OnExecute(Component agent, Blackboard blackboard){
 
 			if (nestedFSM == null || nestedFSM.primeNode == null)
@@ -76,14 +72,23 @@ namespace NodeCanvas.BehaviourTrees{
 		}
 
 		protected override void OnReset(){
-
 			if (nestedFSM)
 				nestedFSM.StopGraph();
+		}
+
+		public override void OnGraphStarted(){
+			if (nestedFSM)
+				CheckInstance();
 		}
 
 		public override void OnGraphPaused(){
 			if (nestedFSM)
 				nestedFSM.PauseGraph();
+		}
+
+		public override void OnGraphStoped(){
+			if (nestedFSM)
+				nestedFSM.StopGraph();
 		}
 
 		void CheckInstance(){
@@ -104,7 +109,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 		    if (nestedFSM){
 
-		    	GUILayout.Label("'" + nestedFSM.graphName + "'");
+		    	GUILayout.Label("'" + nestedFSM.name + "'");
 
 		    	if (graph.isRunning)
 			    	GUILayout.Label("State: " + nestedFSM.currentStateName);
@@ -123,7 +128,7 @@ namespace NodeCanvas.BehaviourTrees{
 		    if (nestedFSM == null)
 		    	return;
 
-	    	nestedFSM.graphName = UnityEditor.EditorGUILayout.TextField("Name", nestedFSM.graphName);
+	    	nestedFSM.name = UnityEditor.EditorGUILayout.TextField("Name", nestedFSM.name);
 
 		    successState = EditorUtils.StringPopup("Success State", successState, nestedFSM.GetStateNames(), false, true);
 		    failureState = EditorUtils.StringPopup("Failure State", failureState, nestedFSM.GetStateNames(), false, true);

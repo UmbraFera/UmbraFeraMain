@@ -109,7 +109,7 @@ namespace NodeCanvas.StateMachines{
 			GUILayout.EndVertical();
 			GUI.color = Color.white;
 
-			nestedDLG.graphName = nodeName;
+			nestedDLG.name = nodeName;
 
 			string names = string.Empty;
 			foreach (string actorName in nestedDLG.dialogueActorNames)

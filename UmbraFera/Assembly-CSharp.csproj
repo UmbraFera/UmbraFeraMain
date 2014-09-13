@@ -19,7 +19,7 @@
 	<DebugType>full</DebugType>
 	<Optimize>false</Optimize>
 	<OutputPath>Temp\bin\Debug\</OutputPath>
-	<DefineConstants>DEBUG;TRACE;UNITY_4_5_3;UNITY_4_5;UNITY_STANDALONE_WIN;ENABLE_MICROPHONE;ENABLE_TEXTUREID_MAP;ENABLE_UNITYEVENTS;ENABLE_NEW_HIERARCHY ;ENABLE_AUDIO_FMOD;UNITY_STANDALONE;ENABLE_MONO;ENABLE_TERRAIN;ENABLE_SUBSTANCE;ENABLE_GENERICS;INCLUDE_WP8SUPPORT;ENABLE_MOVIES;ENABLE_WWW;ENABLE_IMAGEEFFECTS;INCLUDE_WP_BLUE_SUPPORT;ENABLE_WEBCAM;INCLUDE_METROSUPPORT;RENDER_SOFTWARE_CURSOR;ENABLE_NETWORK;ENABLE_PHYSICS;ENABLE_CACHING;ENABLE_CLOTH;ENABLE_2D_PHYSICS;ENABLE_SHADOWS;ENABLE_AUDIO;ENABLE_NAVMESH_CARVING;ENABLE_DUCK_TYPING;ENABLE_SINGLE_INSTANCE_BUILD_SETTING;ENABLE_PROFILER;UNITY_EDITOR;UNITY_EDITOR_WIN</DefineConstants>
+	<DefineConstants>DEBUG;TRACE;UNITY_4_5_4;UNITY_4_5;UNITY_STANDALONE_WIN;ENABLE_MICROPHONE;ENABLE_TEXTUREID_MAP;ENABLE_UNITYEVENTS;ENABLE_NEW_HIERARCHY ;ENABLE_AUDIO_FMOD;UNITY_STANDALONE;ENABLE_MONO;ENABLE_TERRAIN;ENABLE_SUBSTANCE;ENABLE_GENERICS;INCLUDE_WP8SUPPORT;ENABLE_MOVIES;ENABLE_WWW;ENABLE_IMAGEEFFECTS;INCLUDE_WP_BLUE_SUPPORT;ENABLE_WEBCAM;INCLUDE_METROSUPPORT;RENDER_SOFTWARE_CURSOR;ENABLE_NETWORK;ENABLE_PHYSICS;ENABLE_CACHING;ENABLE_CLOTH;ENABLE_2D_PHYSICS;ENABLE_SHADOWS;ENABLE_AUDIO;ENABLE_NAVMESH_CARVING;ENABLE_DUCK_TYPING;ENABLE_SINGLE_INSTANCE_BUILD_SETTING;ENABLE_PROFILER;UNITY_EDITOR;UNITY_EDITOR_WIN;UNITY_PRO_LICENSE</DefineConstants>
 	<ErrorReport>prompt</ErrorReport>
 	<WarningLevel>4</WarningLevel>
 	<NoWarn>0169</NoWarn>
@@ -64,6 +64,8 @@
      <Compile Include="Assets\GreyBoxPrototype\Orc Warrior\Scripts\MouseController.cs" />
      <Compile Include="Assets\GreyBoxPrototype\Scripts\Movement.cs" />
      <Compile Include="Assets\NodeCanvas\Core\Blackboard\BBVariables.cs" />
+     <Compile Include="Assets\NodeCanvas\Core\Blackboard\Binders\BlackboardMecanimBinder.cs" />
+     <Compile Include="Assets\NodeCanvas\Core\Blackboard\Binders\BlackboardPropertyBinder.cs" />
      <Compile Include="Assets\NodeCanvas\Core\Blackboard\Blackboard.cs" />
      <Compile Include="Assets\NodeCanvas\Core\Blackboard\DataTypes\BoolData.cs" />
      <Compile Include="Assets\NodeCanvas\Core\Blackboard\DataTypes\ColorData.cs" />
@@ -109,15 +111,19 @@
      <Compile Include="Assets\NodeCanvas\Core\Tasks\ConditionList.cs" />
      <Compile Include="Assets\NodeCanvas\Core\Tasks\ConditionTask.cs" />
      <Compile Include="Assets\NodeCanvas\Core\Tasks\Task.cs" />
+     <Compile Include="Assets\NodeCanvas\Core\Tasks\TaskTools.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\BTConnection.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\BTNodeBase.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\BehaviourTree.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\BehaviourTreeOwner.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTComposite.cs" />
+     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTFlipSelector.cs" />
+     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTIndexSwitcher.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTParallel.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTProbabilitySelector.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTSelector.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTSequencer.cs" />
+     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Composites\BTStepIterator.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTAccessor.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTDebugger.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTDecorator.cs" />
@@ -125,15 +131,17 @@
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTGuard.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTInterruptor.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTIterator.cs" />
+     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTIteratorV2.cs" />
+     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTOptional.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTRemapper.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTRepeater.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Decorators\BTSetter.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTAction.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTCondition.cs" />
-     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTMutateSwitcher.cs" />
-     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTMutateToggler.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTNestedDLGNode.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTNestedFSMNode.cs" />
+     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTNodeToggler.cs" />
+     <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTRootSwitcher.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\BehaviourTree\Leafs\BTSubTree.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\DialogueTree\DLGActionNode.cs" />
      <Compile Include="Assets\NodeCanvas\Systems\DialogueTree\DLGConditionNode.cs" />
@@ -186,6 +194,7 @@
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Blackboard\SetAnyBlackboardVariable.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Blackboard\SetBoolean.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Blackboard\SetComponent.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Actions\Blackboard\SetEnum.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Blackboard\SetFloat.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Blackboard\SetFloatRandom.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Blackboard\SetGameObject.cs" />
@@ -201,7 +210,9 @@
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\CreateGameObject.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\CurveTransformTween.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\DestroyGameObject.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\FindAllWithName.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\FindAllWithTag.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\FindClosestWithTag.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\FindObjectOfType.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\FindObjectsOfType.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\GameObject\FindWithName.cs" />
@@ -239,6 +250,7 @@
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Mecanim\MecanimSetLayerWeight.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Mecanim\MecanimSetLookAt.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Mecanim\MecanimSetTrigger.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Actions\Movement\InputMove.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Movement\MoveAway.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Movement\MoveToFromList.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Movement\MoveToGameObject.cs" />
@@ -258,6 +270,7 @@
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\ScriptControl\SetField.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\ScriptControl\SetProperty.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Utility\DebugAction.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Actions\Utility\DebugBeep.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Utility\DebugDrawLine.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Utility\ExecuteExpression.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Utility\GraphOwnerControl.cs" />
@@ -267,19 +280,21 @@
      <Compile Include="Assets\NodeCanvas\Tasks\Actions\Utility\Wait.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\CheckBoolean.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\CheckComponent.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\CheckEnum.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\CheckFloat.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\CheckGameObject.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\CheckInt.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\CheckString.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\GameObjectIsNull.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\ListContainsObject.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\ListContainsString.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\ListIsEmpty.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Blackboard\StringContains.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\GameObject\CheckDistance.cs" />
-     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\GameObject\CheckInFront.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\GameObject\CheckLOS.cs" />
-     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\GameObject\GameObjectIsNull.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\GameObject\HasComponent.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\GameObject\IsActive.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\GameObject\IsInFront.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Input\CheckButtonInput.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Input\CheckKeyboardInput.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Input\CheckMousePick.cs" />
@@ -288,7 +303,9 @@
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Mecanim\MecanimCheckInt.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Mecanim\MecanimConditions.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Mecanim\MecanimIsInTransition.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Movement\PathExists.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\ScriptControl\CheckCSharpEvent.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\ScriptControl\CheckField.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\ScriptControl\CheckFunction.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\ScriptControl\CheckProperty.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\SystemEvents\CheckCollision.cs" />
@@ -299,35 +316,105 @@
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\SystemEvents\CheckMouseClick2D.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\SystemEvents\CheckTrigger.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\SystemEvents\CheckTrigger2D.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\UGUI\ButtonClicked.cs" />
+     <Compile Include="Assets\NodeCanvas\Tasks\Conditions\UGUI\InterceptEvent.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Utility\CheckEvent.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Utility\CheckExpression.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Utility\DebugCondition.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Utility\Probability.cs" />
      <Compile Include="Assets\NodeCanvas\Tasks\Conditions\Utility\Timeout.cs" />
-     <Compile Include="Assets\NodeCanvas\Version1.5.3.cs" />
+     <Compile Include="Assets\NodeCanvas\Version1.5.8.cs" />
+     <Compile Include="Assets\UniWeb\Examples\ForceProxyExample.cs" />
+     <Compile Include="Assets\UniWeb\Examples\KeepAliveExample.cs" />
+     <Compile Include="Assets\UniWeb\Examples\Server\AnotherHelloWorldHandler.cs" />
+     <Compile Include="Assets\UniWeb\Examples\Server\HelloWorldHandler.cs" />
+     <Compile Include="Assets\UniWeb\Examples\SocketIOClientExample.cs" />
+     <Compile Include="Assets\UniWeb\Examples\UniWebExamples.cs" />
+     <Compile Include="Assets\UniWeb\Examples\WebsocketClientEcho.cs" />
+     <Compile Include="Assets\UniWeb\Examples\WebsocketClientExample.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\Arc4RandomNumberGenerator.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\BaseHTTP.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\HTTPProtocol.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\Headers.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\HttpConnection.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\HttpException.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\JsonSerializer.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\Request.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\Response.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\Server\HttpRequestHandler.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\Server\HttpServer.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\SocketIO\SocketIOConnection.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\SocketIO\SocketIOMessage.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\UniWeb.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\Utility.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\HTTP\WebSocket.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\Network\NetworkStream.cs" />
+     <Compile Include="Assets\UniWeb\Plugins\Network\TcpClient.cs" />
      <Compile Include="Assets\Unity_4_3_Source\Samples\Scripts\SpriteEvent_VLS.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\Action.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\Attribute.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\Condition.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\FSM.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\FSMEvent.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\State.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\stateController.cs" />
+     <Compile Include="Assets\stateMachine\1 Core Scripts\stateControllerInterface.cs" />
+     <Compile Include="Assets\stateMachine\2 GUI Scripts\AttributePair.cs" />
+     <Compile Include="Assets\stateMachine\2 GUI Scripts\EventConnection.cs" />
+     <Compile Include="Assets\stateMachine\2 GUI Scripts\statePanel.cs" />
+     <Compile Include="Assets\stateMachine\3 Examples\Scripts\clickHandler.cs" />
+     <Compile Include="Assets\stateMachine\3 Examples\Scripts\collisionDetector.cs" />
+     <Compile Include="Assets\stateMachine\3 Examples\Scripts\lightMarkerController1.cs" />
+     <Compile Include="Assets\stateMachine\3 Examples\Scripts\lightMarkerController2.cs" />
+     <Compile Include="Assets\stateMachine\3 Examples\Scripts\timeFire.cs" />
+     <Compile Include="Assets\stateMachine\4 Helper Statics\HelperConstants.cs" />
+     <Compile Include="Assets\stateMachine\4 Helper Statics\HelperEditor.cs" />
+     <Compile Include="Assets\stateMachine\4 Helper Statics\HelperFile.cs" />
+     <Compile Include="Assets\stateMachine\4 Helper Statics\HelperFormater.cs" />
+     <Compile Include="Assets\stateMachine\4 Helper Statics\HelperGraphics.cs" />
+     <Compile Include="Assets\stateMachine\Controllers\carController.cs" />
+     <Compile Include="Assets\stateMachine\Controllers\gameController.cs" />
+     <Compile Include="Assets\stateMachine\Controllers\lightController.cs" />
+     <Compile Include="Assets\stateMachine\Controllers\testController.cs" />
+     <Compile Include="Assets\stateMachine\Controllers\walkerController.cs" />
      <None Include="Assets\Standard Assets\Projectors\Guidelines.txt" />
      <None Include="Assets\Unity_4_3_Source\Shaders (WIP)\2DVLS_Cutout (2-Sided).shader" />
      <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-Basic.shader" />
+     <None Include="Assets\UniWeb\FAQ.txt" />
      <None Include="Assets\Standard Assets\Projectors\Sources\Shaders\Projector Multiply.shader" />
+     <None Include="Assets\UniWeb\CHANGES.txt" />
+     <None Include="Assets\stateMachine\Resources\lightFSM.txt" />
      <None Include="Assets\Unity_4_3_Source\Shaders (WIP)\2DVLS_Diffuse (2-Sided).shader" />
+     <None Include="Assets\stateMachine\Resources\carFSM.txt" />
      <None Include="Assets\Standard Assets\Particles\Sources\Shaders\Particle Alpha Blend (Queue +100).shader" />
+     <None Include="Assets\UniWeb\TODO.txt" />
      <None Include="Assets\2DVLS\Core\Shaders\2DVLS_Diffuse.shader" />
      <None Include="Assets\2DVLS\READ-ME.txt" />
      <None Include="Assets\NodeCanvas\!ReadMe!.txt" />
      <None Include="Assets\Standard Assets\Skyboxes\_skybox info.txt" />
      <None Include="Assets\Unity_4_3_Source\Shaders (WIP)\2DVLS_Light.shader" />
      <None Include="Assets\Unity_4_3_Source\Shaders (WIP)\2DVLS_Cutout.shader" />
+     <None Include="Assets\stateMachine\Resources\gameControllerFSM.txt" />
      <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-BasicOutline.shader" />
+     <None Include="Assets\UniWeb\README.txt" />
      <None Include="Assets\2DVLS\Core\Shaders\2DVLS_Cutout (2-Sided).shader" />
      <None Include="Assets\Standard Assets\Projectors\Sources\Shaders\Projector Light.shader" />
      <None Include="Assets\Standard Assets\Water (Basic)\Sources\Shaders\FX-Water Simple.shader" />
      <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-LightedOutline.shader" />
      <None Include="Assets\Standard Assets\Toon Shading\Sources\Shaders\Toony-Lighted.shader" />
+     <None Include="Assets\stateMachine\Resources\testFSM.txt" />
      <None Include="Assets\2DVLS\Core\Shaders\2DVLS_Light.shader" />
      <None Include="Assets\2DVLS\Core\Shaders\2DVLS_Diffuse (2-Sided).shader" />
+     <None Include="Assets\stateMachine\Resources\walkerFSM.txt" />
+     <None Include="Assets\stateMachine\readme.txt" />
      <None Include="Assets\2DVLS\Core\Shaders\2DVLS_Cutout.shader" />
      <None Include="Assets\Unity_4_3_Source\Shaders (WIP)\2DVLS_Diffuse.shader" />
+ <Reference Include="UniExtensions">
+ <HintPath>C:/Users/Grant/Documents/GitHub/UmbraFeraMain/UmbraFera/Assets/UniWeb/DLL/UniExtensions.dll</HintPath>
+ </Reference>
+ <Reference Include="bouncywp71">
+ <HintPath>C:/Users/Grant/Documents/GitHub/UmbraFeraMain/UmbraFera/Assets/UniWeb/DLL/bouncywp71.dll</HintPath>
+ </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="Assembly-CSharp-firstpass.csproj">

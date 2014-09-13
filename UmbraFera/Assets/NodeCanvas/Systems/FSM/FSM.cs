@@ -15,12 +15,12 @@ namespace NodeCanvas.StateMachines{
 		private Dictionary<MonoBehaviour, MethodInfo> stayMethods  = new Dictionary<MonoBehaviour, MethodInfo>();
 		private Dictionary<MonoBehaviour, MethodInfo> exitMethods  = new Dictionary<MonoBehaviour, MethodInfo>();
 
-		///The current status name. Null if none
+		///The current state name. Null if none
 		public string currentStateName{
 			get {return currentState != null? currentState.nodeName : null; }
 		}
 
-		///The last status name. Not the current! Null if none
+		///The last state name. Not the current! Null if none
 		public string lastStateName{
 			get	{return lastState != null? lastState.nodeName : null; }
 		}
@@ -47,23 +47,28 @@ namespace NodeCanvas.StateMachines{
 
 		protected override void OnGraphUpdate(){
 
+			//do this first
+			if (currentState.status != Status.Running && currentState.outConnections.Count == 0){
+				StopGraph();
+				return;
+			}
+
 			foreach(FSMAnyState anyState in anyStates)
 				anyState.UpdateAnyState();
 
 			currentState.OnUpdate();
+			
 			if (currentState.status == Status.Running)
 				CallbackStay(currentState);
 		}
 
 		protected override void OnGraphStoped(){
-
 			lastState = null;
 			currentState = null;
 		}
 
 		protected override void OnGraphPaused(){
 			lastState = currentState;
-			currentState = null;
 		}
 
 		///Enter a state providing the state itself
@@ -107,7 +112,7 @@ namespace NodeCanvas.StateMachines{
 				return state;
 			}
 
-			Debug.LogWarning("No State with name '" + stateName + "' found on FSM '" + graphName + "'");
+			Debug.LogWarning("No State with name '" + stateName + "' found on FSM '" + name + "'");
 			return null;
 		}
 

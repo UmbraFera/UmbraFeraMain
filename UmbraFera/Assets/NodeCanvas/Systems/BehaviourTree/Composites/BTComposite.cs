@@ -31,7 +31,7 @@ namespace NodeCanvas.BehaviourTrees{
 			if (!UnityEditor.EditorUtility.DisplayDialog("Convert to SubTree", "This will create a new SubTree out of this branch.\nThe SubTree can NOT be unpacked later on.\nAre you sure?", "Yes", "No!"))
 				return;
 
-			var newNestedNode = (BTSubTree)graph.AddNewNode(typeof(BTSubTree));
+			var newNestedNode = (BTSubTree)graph.AddNode(typeof(BTSubTree));
 			var newBT = (BehaviourTree)Graph.CreateNested(newNestedNode, typeof(BehaviourTree), "Nested BT");
 
 			newNestedNode.nodeRect.center = this.nodeRect.center;

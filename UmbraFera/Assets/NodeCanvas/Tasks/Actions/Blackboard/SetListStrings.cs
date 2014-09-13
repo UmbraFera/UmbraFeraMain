@@ -5,7 +5,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
-	[Category("✫ Blackboard")]
+	[Category("✫ Blackboard/Lists")]
 	[Description("Add a number of strings to the target string list variable")]
 	public class SetListStrings : ActionTask {
 

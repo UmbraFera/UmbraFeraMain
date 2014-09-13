@@ -32,13 +32,9 @@ namespace NodeCanvasEditor{
 			for (int i = 0; i < DLGTree.dialogueActorNames.Count; i++){
 
 				GUILayout.BeginHorizontal();
-
 				DLGTree.dialogueActorNames[i] = EditorGUILayout.TextField(DLGTree.dialogueActorNames[i]);
-
-				GUI.backgroundColor = EditorUtils.lightRed;
 				if (GUILayout.Button("X", GUILayout.Width(18)))
 					DLGTree.dialogueActorNames.RemoveAt(i);
-				GUI.backgroundColor = Color.white;
 				GUILayout.EndHorizontal();
 			}
 

@@ -1,0 +1,24 @@
+//STATES   ID,   EVENTS
+foward,0,0:1:2:3,257,21,This state happens when player is moving forward.;
+idle,1,4,415,682,This state happens when player is not moving.;
+lookingAround,2,5,510,305,This state happens when player is stopped and looking around;
+turnLeft,3,7,243,472,This state happens when player rotates left;
+turningAround,4,8,801,229,This state happens when player turns around.;
+turnRight,5,6,778,17,This state happens when player rotates right.
+|
+
+direction=0;
+targetDirection=0;
+speed=5;
+count=0
+|
+
+tick,0,1,count>5,count=0;
+wallAhead,1,4,,count=0;
+turnLeft,2,3,,;
+turnRight,3,5,,;
+tick,4,2,count>2,;
+tick,5,0,count>5,count=0;
+done,6,0,,;
+done,7,0,,;
+done,8,0,,

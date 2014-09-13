@@ -1,7 +1,3 @@
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -60,7 +56,7 @@ namespace NodeCanvas.DialogueTrees{
 						Debug.Log("Dialogue Agent game object has now Blackboard. Adding one now and assigning it to the Dialogue Actor...", agent.gameObject);
 						actor.blackboard = actor.gameObject.AddComponent<Blackboard>();
 					}
-					actor.actorName = actor.gameObject.name;
+					actor.name = actor.gameObject.name;
 					agent = actor;
 				}
 			
@@ -69,7 +65,7 @@ namespace NodeCanvas.DialogueTrees{
 				Debug.Log("Dialogue Started with no Agent to be used as 'Owner'. A default one will be created now...", this.gameObject);
 				var actor = this.gameObject.AddComponent<DialogueActor>();
 				actor.blackboard = this.gameObject.AddComponent<Blackboard>();
-				actor.actorName = "Default";
+				actor.name = "Default";
 				agent = actor;
 			}
 
@@ -79,11 +75,11 @@ namespace NodeCanvas.DialogueTrees{
 			actorReferences.Clear();
 
 			foreach (string actorName in dialogueActorNames)
-				actorReferences[actorName] = DialogueActor.FindActorWithName(actorName);
+				actorReferences[actorName] = DialogueActor.Find(actorName);
 
 			foreach (KeyValuePair<string, DialogueActor> pair in actorReferences){
 				if (pair.Value == null)
-					Debug.LogWarning(pair.Key + " DialogueActor not found when starting Dialogue Tree " + graphName + ". Dialogue will play but if a node with that actor is encountered an error will show", gameObject);
+					Debug.LogWarning(pair.Key + " DialogueActor not found when starting Dialogue Tree " + name + ". Dialogue will play but if a node with that actor is encountered an error will show and the Dialogue will Stop", gameObject);
 			}
 
 			//DLGNodes implement ITaskDefaults to provide defaults for the tasks they contain based on the dialogue actor selected for the node
@@ -99,7 +95,7 @@ namespace NodeCanvas.DialogueTrees{
 
 		protected override void OnGraphStoped(){
 
-			endState = currentNode? (EndState)currentNode.status : EndState.None;
+			endState = currentNode? (EndState)currentNode.status : EndState.Success;
 
 			EventHandler.Dispatch(DLGEvents.OnDialogueFinished, this);
 			actorReferences.Clear();
@@ -114,10 +110,10 @@ namespace NodeCanvas.DialogueTrees{
 		////////////////////////////////////////
 		#if UNITY_EDITOR
 		
-		[MenuItem("Window/NodeCanvas/Create Dialogue Tree")]
+		[UnityEditor.MenuItem("Window/NodeCanvas/Create Dialogue Tree")]
 		public static void CreateDialogueTree(){
 			DialogueTree newDLG = new GameObject("DialogueTree").AddComponent(typeof(DialogueTree)) as DialogueTree;
-			Selection.activeObject = newDLG;
+			UnityEditor.Selection.activeObject = newDLG;
 		}		
 		
 		#endif

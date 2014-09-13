@@ -6,6 +6,7 @@ namespace NodeCanvas.Actions{
 
 	[Category("Physics")]
 	[AgentType(typeof(Transform))]
+	[Description("Get hit info for ALL objects in the linecast, in Lists")]
 	public class GetLinecastInfo2DAll : ActionTask {
 
 		[RequiredField]
@@ -35,5 +36,10 @@ namespace NodeCanvas.Actions{
 
             EndAction(false);
 		}
+
+		protected override void OnGizmosSelected(){
+			if (agent && target.value)
+				Gizmos.DrawLine(agent.transform.position, target.value.transform.position);
+		}	
 	}
 }

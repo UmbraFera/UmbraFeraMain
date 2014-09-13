@@ -1,8 +1,4 @@
-﻿#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using NodeCanvas.Variables;
@@ -17,8 +13,10 @@ namespace NodeCanvas.BehaviourTrees{
 	///Iterate a GameObject list
 	public class BTIterator : BTDecorator{
 
-		public BBGameObjectList list = new BBGameObjectList{blackboardOnly = true};
-		public BBGameObject current = new BBGameObject{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBGameObjectList list;
+		[BlackboardOnly]
+		public BBGameObject current;
 		public BBInt maxIteration;
 
 		public enum TerminationConditions {FirstSuccess, FirstFailure, None}
@@ -71,8 +69,10 @@ namespace NodeCanvas.BehaviourTrees{
 
 		protected override void OnNodeGUI(){
 
-			GUILayout.Label("For Each \t'<b>$" + current.dataName + "</b>'\nIn \t\t\t'<b>$" + list.dataName + "</b>'");
-			//GUILayout.Label("");
+			var leftLabelStyle = new GUIStyle(GUI.skin.GetStyle("label"));
+			leftLabelStyle.alignment = TextAnchor.UpperLeft;
+
+			GUILayout.Label("For Each \t'<b>$" + current.dataName + "</b>'\nIn \t\t\t'<b>$" + list.dataName + "</b>'", leftLabelStyle);
 			if (terminationCondition != TerminationConditions.None)
 				GUILayout.Label("Exit on " + terminationCondition.ToString());
 

@@ -28,7 +28,7 @@ namespace NodeCanvas.StateMachines{
 			set {nestedFSM = (FSM)value;}
 		}
 
-		protected override void OnAwake(){
+		protected override void Init(){
 			CheckInstance();
 		}
 
@@ -90,7 +90,7 @@ namespace NodeCanvas.StateMachines{
 			}
 
 			if (nestedFSM != null)
-				nestedFSM.graphName = nodeName;
+				nestedFSM.name = nodeName;
 		}
 		
 		#endif

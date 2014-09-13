@@ -25,7 +25,7 @@ namespace NodeCanvas.Variables{
 
 		public override void ShowDataGUI(){
 			GUI.backgroundColor = new Color(0.7f,0.7f,1);
-			objectValue = UnityEditor.EditorGUILayout.FloatField(value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+			objectValue = UnityEditor.EditorGUILayout.FloatField(value, layoutOptions);
 		}
 
 		#endif

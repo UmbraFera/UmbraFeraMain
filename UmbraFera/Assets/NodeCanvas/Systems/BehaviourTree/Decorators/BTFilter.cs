@@ -17,14 +17,12 @@ namespace NodeCanvas.BehaviourTrees{
 		}
 
 		public LimitMode limitMode = LimitMode.CoolDown;
-
 		public BBInt maxCount = new BBInt{value = 1};
-		private int executedCount;
-
 		public BBFloat coolDownTime = new BBFloat{value = 5};
-		private float currentTime;
-
 		public bool inactiveWhenLimited = true;
+
+		private int executedCount;
+		private float currentTime;
 
 
 		public override void OnGraphStarted(){

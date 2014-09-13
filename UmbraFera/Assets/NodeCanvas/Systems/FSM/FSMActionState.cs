@@ -1,7 +1,3 @@
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 using UnityEngine;
 using System.Collections;
 
@@ -20,9 +16,20 @@ namespace NodeCanvas.StateMachines{
 			get {return actionList;}
 			set {actionList = (ActionList)value;}
 		}
+
+		public Object serializedTask{
+			get {return _actionList;}
+		}
 		
 		private ActionList actionList{
-			get {return _actionList;}
+			get
+			{
+				if (_actionList == null){
+					_actionList = gameObject.AddComponent<ActionList>();
+					_actionList.runInParallel = true;
+				}
+				return _actionList;
+			}
 			set
 			{
 				_actionList = value;

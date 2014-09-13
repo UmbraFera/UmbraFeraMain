@@ -1,7 +1,3 @@
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 using UnityEngine;
 using System.Collections;
 
@@ -12,20 +8,24 @@ namespace NodeCanvas{
 	public class ConditionalConnection : Connection, ITaskAssignable{
 
 		[SerializeField]
-		private ConditionTask _condition;
+		private Object _condition;
 
 		public Task task{
 			get {return condition;}
 			set {condition = (ConditionTask)value;}
 		}
 
-		public ConditionTask condition{
+		public Object serializedTask{
 			get {return _condition;}
+		}
+
+		public ConditionTask condition{
+			get {return _condition as ConditionTask;}
 			set
 			{
 				_condition = value;
-				if (_condition != null)
-					_condition.SetOwnerSystem(graph);
+				if (value != null)
+					value.SetOwnerSystem(graph);
 			}
 		}
 
@@ -68,7 +68,7 @@ namespace NodeCanvas{
 
 			var e = Event.current;
 
-			var textToShow = "<size=9>" + (condition? condition.taskInfo : "No Condition") + "</size>";
+			var textToShow = "<size=9>" + (condition? condition.summaryInfo : "No Condition") + "</size>";
 			textToShow = _showConditionsGUI? textToShow : (condition? "-||-" : "---");
 
 			var finalSize= new GUIStyle("Box").CalcSize(new GUIContent(textToShow));
@@ -93,7 +93,7 @@ namespace NodeCanvas{
 			if (!condition){
 				EditorUtils.TaskSelectionButton(gameObject, typeof(ConditionTask), delegate(Task c){condition = (ConditionTask)c;});
 			} else {
-				EditorUtils.TaskTitlebar(condition);
+				condition.ShowInspectorGUI();
 			}
 		}
 

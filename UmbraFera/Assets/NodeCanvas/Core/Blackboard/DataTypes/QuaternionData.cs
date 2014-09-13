@@ -10,7 +10,13 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = (Quaternion)value;}
+			set
+			{
+				if (this.value != (Quaternion)value){
+					this.value = (Quaternion)value;
+					OnValueChanged(value);
+				}
+			}
 		}
 
 		public override object GetSerialized(){
@@ -29,8 +35,8 @@ namespace NodeCanvas.Variables{
 
 		public override void ShowDataGUI(){
 			var vecValue = new Vector4(value.x, value.y, value.z, value.w);
-			vecValue = UnityEditor.EditorGUILayout.Vector4Field("", vecValue, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
-			value = new Quaternion(vecValue.x, vecValue.y, vecValue.z, vecValue.w);
+			vecValue = UnityEditor.EditorGUILayout.Vector4Field("", vecValue, layoutOptions);
+			objectValue = new Quaternion(vecValue.x, vecValue.y, vecValue.z, vecValue.w);
 		}
 
 		#endif

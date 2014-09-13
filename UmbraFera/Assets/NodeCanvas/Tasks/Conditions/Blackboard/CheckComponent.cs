@@ -6,7 +6,8 @@ namespace NodeCanvas.Conditions{
 	[Category("✫ Blackboard")]
 	public class CheckComponent : ConditionTask {
 
-		public BBComponent valueA = new BBComponent{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBComponent valueA;
 		public BBComponent valueB;
 
 		protected override string info{
@@ -14,7 +15,6 @@ namespace NodeCanvas.Conditions{
 		}
 
 		protected override bool OnCheck(){
-
 			return valueA.value == valueB.value;
 		}
 	}

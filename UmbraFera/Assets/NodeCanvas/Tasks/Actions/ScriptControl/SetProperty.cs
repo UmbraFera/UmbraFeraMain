@@ -17,12 +17,15 @@ namespace NodeCanvas.Actions{
 		public BBVariableSet setValue = new BBVariableSet();
 
 		[SerializeField]
-		private string methodName;
+		private string scriptName = typeof(Component).AssemblyQualifiedName;
 		[SerializeField]
-		private string scriptName;
+		private string methodName;
 
-		private Component script;
 		private MethodInfo method;
+
+		public override System.Type agentType{
+			get {return System.Type.GetType(scriptName);}
+		}
 
 		protected override string info{
 			get
@@ -36,10 +39,7 @@ namespace NodeCanvas.Actions{
 
 		//store the method info on init for performance
 		protected override string OnInit(){
-			script = agent.GetComponent(scriptName);
-			if (script == null)
-				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "'";
-			method = script.GetType().NCGetMethod(methodName);
+			method = agent.GetType().NCGetMethod(methodName);
 			if (method == null)
 				return "Missing Property Method";
 			return null;
@@ -47,8 +47,7 @@ namespace NodeCanvas.Actions{
 
 		//do it by invoking method
 		protected override void OnExecute(){
-			
-			method.Invoke(script, new object[]{setValue.objectValue} );
+			method.Invoke(agent, new object[]{setValue.objectValue} );
 			EndAction(true);
 		}
 
@@ -56,40 +55,61 @@ namespace NodeCanvas.Actions{
 		///////////GUI AND EDITOR STUFF/////////
 		////////////////////////////////////////
 		#if UNITY_EDITOR
+
+
+		/////UPDATING
+		protected override void OnEditorValidate(){
+			if (agentType == null)
+				scriptName = EditorUtils.GetType(scriptName, typeof(Component)).AssemblyQualifiedName;
+		}
+		///////	
 		
 		protected override void OnTaskInspectorGUI(){
 
-			if (agent == null){
-				EditorGUILayout.HelpBox("This Action needs the Agent to be known. Currently the Agent is unknown", MessageType.Error);
-				return;
+			EditorGUILayout.HelpBox(agent == null? "Agent is unknown.\nYou can select a type and a method" : "Agent is known.\nMethod selection will be done from existing components", MessageType.Info);
+
+			if (!Application.isPlaying && agent == null && GUILayout.Button("Alter Type")){
+
+				System.Action<System.Type> TypeSelected = delegate(System.Type t){
+					var newTypeName = t.AssemblyQualifiedName;
+					if (scriptName != newTypeName){
+						scriptName = newTypeName;
+						methodName = null;
+					}					
+				};
+
+				EditorUtils.ShowConfiguredTypeSelectionMenu(typeof(Component), TypeSelected);				
 			}
 
-			if (agent.GetComponent(scriptName) == null){
-				scriptName = null;
-				methodName = null;
-				setValue.selectedType = null;
-			}
+			if (!Application.isPlaying && GUILayout.Button("Select Property")){
 
-			if (GUILayout.Button("Select Property")){
-				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, new List<System.Type>{typeof(void)}, setValue.availableTypes, delegate(MethodInfo method){
-					scriptName = method.ReflectedType.Name;
+				System.Action<MethodInfo> MethodSelected = delegate(MethodInfo method){
+					if (!typeof(Component).IsAssignableFrom(method.DeclaringType) && !method.DeclaringType.IsInterface )
+						return;
+					scriptName = method.DeclaringType.AssemblyQualifiedName;
 					methodName = method.Name;
 					setValue.selectedType = method.GetParameters()[0].ParameterType;
-					if (Application.isPlaying)
-						OnInit();
-				}, 1, true);
+				};
+
+				if (agent != null){
+					EditorUtils.ShowGameObjectMethodSelectionMenu(agent.gameObject, new List<System.Type>{typeof(void)}, setValue.availableTypes, MethodSelected, 1, true);
+				} else {
+					var menu = EditorUtils.GetMetodSelectionMenu(agentType, new List<System.Type>{typeof(void)}, setValue.availableTypes, MethodSelected, 1, true);
+					menu.ShowAsContext();
+					Event.current.Use();
+				}				
 			}
 
 			if (!string.IsNullOrEmpty(methodName)){
 				GUILayout.BeginVertical("box");
-				EditorGUILayout.LabelField("Selected Component", scriptName);
-				EditorGUILayout.LabelField("Selected Property", methodName);
+				EditorGUILayout.LabelField("Type", agentType.Name);
+				EditorGUILayout.LabelField("Property", methodName);
 				EditorGUILayout.LabelField("Set Type", EditorUtils.TypeName(setValue.selectedType) );
 				GUILayout.EndVertical();
-			}
 
-			if (setValue.selectedType != null)
-				EditorUtils.BBVariableField("Set Value", setValue.selectedBBVariable);
+				if (setValue.selectedType != null)
+					EditorUtils.BBVariableField("Set Value", setValue.selectedBBVariable);
+			}
 		}
 
 		#endif

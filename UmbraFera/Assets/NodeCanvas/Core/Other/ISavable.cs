@@ -2,8 +2,8 @@
 
 	interface ISavable{
 
+		string saveKey{get;}
 		string Save();
 		bool Load();
-		string saveKey{get;}
 	}
 }

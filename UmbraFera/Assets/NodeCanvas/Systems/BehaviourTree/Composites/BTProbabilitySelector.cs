@@ -12,10 +12,8 @@ namespace NodeCanvas.BehaviourTrees{
 	[Icon("ProbabilitySelector")]
 	public class BTProbabilitySelector : BTComposite {
 
-		[SerializeField]
-		private List<BBFloat> childWeights = new List<BBFloat>();
-		[SerializeField]
-		private BBFloat failChance = new BBFloat();
+		public List<BBFloat> childWeights = new List<BBFloat>();
+		public BBFloat failChance = new BBFloat();
 
 		private float probability;
 		private float currentProbability;

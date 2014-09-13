@@ -6,7 +6,8 @@ namespace NodeCanvas.Conditions{
 	[Category("✫ Blackboard")]
 	public class CheckGameObject : ConditionTask {
 
-		public BBGameObject valueA = new BBGameObject{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBGameObject valueA;
 		public BBGameObject valueB;
 
 		protected override string info{

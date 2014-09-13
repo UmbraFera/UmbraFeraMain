@@ -6,13 +6,13 @@ using NodeCanvas.Variables;
 namespace NodeCanvas.Actions{
 
 	[Category("GameObject")]
+	[Description("Action will end in Failure if no objects are found")]
 	public class FindAllWithTag : ActionTask{
 
 		[RequiredField] [TagField]
 		public string searchTag = "Untagged";
-		
-		[RequiredField]
-		public BBGameObjectList saveAs = new BBGameObjectList{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBGameObjectList saveAs;
 
 		protected override string info{
 			get{return "GetObjects '" + searchTag + "' as " + saveAs;}
@@ -21,7 +21,7 @@ namespace NodeCanvas.Actions{
 		protected override void OnExecute(){
 
 			saveAs.value = GameObject.FindGameObjectsWithTag(searchTag).ToList();
-			EndAction(true);
+			EndAction(saveAs.value.Count != 0);
 		}
 	}
 }

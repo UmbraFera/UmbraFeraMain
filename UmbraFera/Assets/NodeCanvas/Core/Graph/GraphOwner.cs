@@ -54,26 +54,6 @@ namespace NodeCanvas{
 		///The Graph type this Owner should be assigned
 		abstract public Type graphType{ get; }
 
-		[Obsolete("Use 'onEnable = GraphOwer.EnableAction.StartBehaviour")]
-		public bool executeOnStart{	get {return onEnable == EnableAction.StartBehaviour;} set {onEnable = value? EnableAction.StartBehaviour:EnableAction.DoNothing;}	}
-		[Obsolete("Use 'behaviour' instead")]
-		public Graph graph {get{return behaviour;} set {behaviour = value;}}
-		[Obsolete("Use 'StartBehaviour' instead")]
-		public void StartGraph(){StartBehaviour();}
-		[Obsolete("Use 'StartBehaviour' instead")]
-		public void StartGraph(Action callback){StartBehaviour(callback);}
-		[Obsolete("Use 'StartBehaviour' instead")]
-		public void StartGraph(Graph newGraph){StartBehaviour(newGraph);}
-		[Obsolete("Use 'StartBehaviour' instead")]
-		public void StartGraph(Graph newGraph, Action callback){StartBehaviour(newGraph, callback);}
-		[Obsolete("Use 'PauseBehaviour' instead")]
-		public void PauseGraph(){PauseBehaviour();}
-		[Obsolete("Use 'StopBehaviour' instead")]
-		public void StopGraph(){StopBehaviour();}
-		[Obsolete("Use 'SwitchBehaviour' instead")]
-		public void SwitchGraph(Graph newGraph){SwitchBehaviour(newGraph);}
-
-
 		///Start the behaviour assigned
 		public void StartBehaviour(){
 			
@@ -190,12 +170,15 @@ namespace NodeCanvas{
 				}
 			}
 
+			instance.agent = this;
+			instance.blackboard = blackboard;
 			instance.gameObject.hideFlags = Graph.doHide? HideFlags.HideAndDontSave : 0;
 			return instance;
 		}
 
 		protected void OnEnable(){
 			
+			behaviour = GetInstance(behaviour);
 			if (onEnable == EnableAction.StartBehaviour)
 				StartBehaviour();
 		}

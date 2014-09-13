@@ -45,7 +45,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 			if (breakPoint){
 				graph.PauseGraph();
-				Debug.Log("Behaviour Tree '" + graph.graphName + "' Breakpoint Reached...(Controls can be found on the BehaviourTreeOwner Inspector)");
+				Debug.Log("Behaviour Tree '" + graph.name + "' Breakpoint Reached...(Controls can be found on the BehaviourTreeOwner Inspector)");
 				if (pauseUnity)
 					Debug.Break();
 			}

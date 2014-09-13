@@ -19,6 +19,7 @@ namespace NodeCanvas.Variables{
 		public Enum value;
 		public string stringValue;
 
+
 		[SerializeField]
 		private string _typeName = typeof(DefaultEnum).AssemblyQualifiedName;
 
@@ -39,18 +40,22 @@ namespace NodeCanvas.Variables{
 			get {return Enum.Parse(type, stringValue);}
 			set
 			{
-				if (value != null && typeof(Enum).NCIsAssignableFrom(value.GetType()) && type != value.GetType() )
-					type = value.GetType();
+				if (!Equals(this.value, value)){
+					if (value != null && typeof(Enum).NCIsAssignableFrom(value.GetType()) && type != value.GetType() )
+						type = value.GetType();
 
-				if (value.GetType() == typeof(string)){
-					if (Enum.GetNames(type).Contains(value)){
-						stringValue = (string)value;
+					if (value.GetType() == typeof(string)){
+						if (Enum.GetNames(type).Contains(value)){
+							stringValue = (string)value;
+						} else {
+							Debug.LogError(string.Format("{0} is not a valid name of the {1} enum type", value, type));
+						}
 					} else {
-						Debug.LogError(string.Format("{0} is not a valid name of the {1} enum type", value, type));
+						stringValue = Enum.GetName(type, value);
+						this.value = (Enum)value;
 					}
-				} else {
-					stringValue = Enum.GetName(type, value);
-					this.value = (Enum)value;
+
+					OnValueChanged(value);
 				}
 			}
 		}
@@ -72,29 +77,14 @@ namespace NodeCanvas.Variables{
 
 		public override void ShowDataGUI(){
 
-			var options = Enum.GetNames(type).ToList();
-			var index = options.Contains(stringValue)? options.IndexOf(stringValue) : -1;
-			index = UnityEditor.EditorGUILayout.Popup(index, options.ToArray(), GUILayout.MaxWidth(90), GUILayout.ExpandWidth(true));
-			stringValue = (index == -1)? string.Empty : options[index];
+			objectValue = (Enum)UnityEditor.EditorGUILayout.EnumPopup((Enum)objectValue, layoutOptions);
 
-			if (GUILayout.Button("", GUILayout.Width(10), GUILayout.Height(14))){
-				var menu = new UnityEditor.GenericMenu();
-				menu.AddItem(new GUIContent("Default"), false, Selected, typeof(DefaultEnum));
-				menu.AddItem(new GUIContent("Status"), false, Selected, typeof(Status));
-				menu.AddSeparator("/");
-
-				foreach(System.Type t in EditorUtils.GetAssemblyTypes(typeof(Enum))){
-					var friendlyName = t.Assembly.GetName().Name + "/" + (string.IsNullOrEmpty(t.Namespace)? "" : t.Namespace + "/") + t.Name;
-					menu.AddItem(new GUIContent("More/" + friendlyName), false, Selected, t);
-				}
-
-				menu.ShowAsContext();
+			if (GUILayout.Button("T", GUILayout.Width(10), GUILayout.Height(14))){
+				EditorUtils.ShowConfiguredTypeSelectionMenu(typeof(Enum), delegate(System.Type t){
+					type = t;
+				}, false);
 			}
 		}
-
-		void Selected(object t){
-			type = (System.Type)t;
-		}		
 
 		#endif
 	}

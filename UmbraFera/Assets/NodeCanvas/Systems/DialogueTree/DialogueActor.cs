@@ -15,10 +15,27 @@ namespace NodeCanvas.DialogueTrees{
 		public Vector3 dialogueOffset;
 		public Blackboard blackboard;
 
+		private Sprite _portraitSprite;
+
+		new public string name{
+			get{return _actorName;}
+			set{_actorName = value;}
+		}
+
 		///The actor name
+		[System.Obsolete("Use 'name' instead")]
 		public string actorName{
 			get {return _actorName;}
 			set {_actorName = value;}
+		}
+
+		public Sprite portraitSprite{
+			get
+			{
+				if (_portraitSprite == null && portrait != null)
+					_portraitSprite = Sprite.Create(portrait, new Rect(0,0,portrait.width, portrait.height), new Vector2(0.5f, 0.5f));
+				return _portraitSprite;
+			}
 		}
 
 		public string speech{get;set;}
@@ -29,25 +46,27 @@ namespace NodeCanvas.DialogueTrees{
 		}
 
 		void Reset(){
-			actorName = gameObject.name;
+			name = gameObject.name;
 		}
 
 		public void Say(string text, System.Action callback){
 			Say(new Statement(text), callback);
 		}
 
+		///Helper function to make the actor talk. Dispatches the nescessary events
 		public void Say(Statement statement, System.Action callback){
 			speech = null;
 			if (!EventHandler.Dispatch(DLGEvents.OnActorSpeaking, new DialogueSpeechInfo(this, statement, callback)))
-				Debug.LogWarning("Make sure you have added the default <b>@DialogueGUI</b> prefab, or you have created your own UI to handle the events");
+				Debug.LogWarning("Make sure you have added the default <b>@DialogueGUI</b> prefab, or you have created your own UI to handle the events dispatched");
 		}
 
+		///Helper function to make the actor stop talking. Dispatches the nescessary events
 		public void StopTalking(){
 			speech = null;
 			EventHandler.Dispatch(DLGEvents.OnDialogueFinished);
 		}
 
-		///An optional coroutine to process a statement writing text over time to the 'speech' propert fo the actor as well as playing audio.
+		///An *optional* coroutine to process a statement writing text over time to the 'speech' property fo the actor as well as playing audio.
 		public IEnumerator ProcessStatement(Statement statement, System.Action callback){
 
 			if (statement.audio){
@@ -88,9 +107,9 @@ namespace NodeCanvas.DialogueTrees{
 		}
 
 		///Finds an actor with provided name. Null if none found
-		public static DialogueActor FindActorWithName(string name){
+		public static DialogueActor Find(string name){
 			foreach (DialogueActor actor in FindObjectsOfType(typeof(DialogueActor))){
-				if (actor.actorName == name)
+				if (actor.name == name)
 					return actor;
 			}
 
@@ -114,7 +133,7 @@ namespace NodeCanvas.DialogueTrees{
 			this.text = text;
 		}
 
-		///Replace the text of the statement found in brackets, with ToString blackboard variables
+		///Replace the text of the statement found in brackets, with blackboard variables ToString
 		public Statement BlackboardReplace(Blackboard bb){
 			string s = text;
 			int i = 0;
@@ -133,6 +152,10 @@ namespace NodeCanvas.DialogueTrees{
 			replacedStatement.audio = audio;
 			replacedStatement.meta = meta;
 			return replacedStatement;			
+		}
+
+		public override string ToString(){
+			return text;
 		}
 	}
 }

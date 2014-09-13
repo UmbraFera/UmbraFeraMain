@@ -10,7 +10,7 @@ namespace NodeCanvas.Actions{
 			get {return "Destroy GameObject";}
 		}
 
-		protected override void OnExecute(){
+		protected override void OnUpdate(){
 
 			Destroy(agent.gameObject);
 			EndAction();

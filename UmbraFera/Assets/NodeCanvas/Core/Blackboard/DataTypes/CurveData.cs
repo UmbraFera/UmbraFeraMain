@@ -10,7 +10,13 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = (AnimationCurve)value;}
+			set
+			{
+				if ((AnimationCurve)value != this.value){
+					this.value = (AnimationCurve)value;
+					OnValueChanged(value);
+				}
+			}
 		}
 
 		public override object GetSerialized(){
@@ -48,7 +54,7 @@ namespace NodeCanvas.Variables{
 		#if UNITY_EDITOR
 
 		public override void ShowDataGUI(){
-			value = UnityEditor.EditorGUILayout.CurveField(value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true), GUILayout.MaxHeight(18));
+			value = UnityEditor.EditorGUILayout.CurveField(value, layoutOptions);
 		}
 
 		#endif

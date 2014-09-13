@@ -1,4 +1,5 @@
 using UnityEngine;
+using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
@@ -6,15 +7,15 @@ namespace NodeCanvas.Actions{
 	public class MecanimSetTrigger : MecanimActions{
 
 		[RequiredField]
-		public string mecanimParameter;
+		public BBString mecanimParameter;
 
 		protected override string info{
-			get{return "Mec.SetTrigger '" + mecanimParameter + "'";}
+			get{return "Mec.SetTrigger " + mecanimParameter;}
 		}
 
 		protected override void OnExecute(){
 
-			animator.SetTrigger(mecanimParameter);
+			animator.SetTrigger(mecanimParameter.value);
 			EndAction();
 		}
 	}

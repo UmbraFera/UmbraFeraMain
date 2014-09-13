@@ -4,6 +4,7 @@ using UnityEditor;
 
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NodeCanvas{
 
@@ -12,16 +13,18 @@ namespace NodeCanvas{
 	///ActionList is an ActionTask itself that though holds multilple Action Tasks which can executes either in parallel or in sequence.
 	public class ActionList : ActionTask{
 
-		public List<ActionTask> actions = new List<ActionTask>();
 		public bool runInParallel;
-		
+
+		[SerializeField] //Serialized as Object so that we can handle missing/refactored tasks
+		private List<Object> actions = new List<Object>();
+
 		private int currentActionIndex;
 
 		public override float estimatedLength{
 			get
 			{
 				float total = 0;
-				foreach (ActionTask action in actions)
+				foreach (ActionTask action in actions.OfType<ActionTask>())
 					total += action.estimatedLength;
 				return total;			
 			}
@@ -33,19 +36,32 @@ namespace NodeCanvas{
 				if (actions.Count == 0)
 					return "No Actions";
 
-				string finalText= string.Empty;
+				var finalText= string.Empty;
 				for (int i= 0; i < actions.Count; i++){
-					if (actions[i].isActive)
-						finalText += (actions[i].isRunning? "► " : actions[i].isPaused? "<b>||</b> " : "") + actions[i].taskInfo + (i == actions.Count -1? "" : "\n" );
+					
+					if (IsTrullyNull(actions[i]))
+						continue;
+
+					var action = actions[i] as ActionTask;
+					if (action == null){
+						finalText += MissingTaskText(actions[i]) + "\n";
+						continue;
+					}
+
+					if (action.isActive){
+						var prefix = action.isRunning? "► " : action.isPaused? "<b>||</b> " : "";
+						finalText += prefix + action.summaryInfo + (i == actions.Count -1? "" : "\n");
+					}
 				}
-				return finalText;			
+
+				return finalText;	
 			}
 		}
 
 		protected override void OnExecute(){
 
 			if (actions.Count == 0){
-				EndAction(false);
+				EndAction();
 				return;
 			}
 
@@ -54,11 +70,14 @@ namespace NodeCanvas{
 			if (runInParallel){
 		
 				for (int i= 0; i < actions.Count; i++){
-					if (actions[i].isActive){
-						actions[i].ExecuteAction(agent, blackboard, OnNestedActionEnd);
-					} else {
+
+					var action = actions[i] as ActionTask;
+					if (!action || !action.isActive){
 						OnNestedActionEnd(true);
+						continue;
 					}
+
+					action.ExecuteAction(agent, blackboard, OnNestedActionEnd);
 				}
 
 			} else {
@@ -69,11 +88,12 @@ namespace NodeCanvas{
 
 		void MoveNext(){
 
-			if (!actions[currentActionIndex].isActive){
+			var action = actions[currentActionIndex] as ActionTask;
+			if (!action || !action.isActive){
 				OnNestedActionEnd(true);
 				return;
 			}
-			actions[currentActionIndex].ExecuteAction(agent, blackboard, OnNestedActionEnd);
+			action.ExecuteAction(agent, blackboard, OnNestedActionEnd);
 		}
 
 		//This is the callback from a nested action
@@ -103,25 +123,35 @@ namespace NodeCanvas{
 		}
 
 		protected override void OnStop(){
-
-			foreach (ActionTask action in actions)
+			foreach (ActionTask action in actions.OfType<ActionTask>())
 				action.EndAction(false);
 		}
 
 		protected override void OnPause(){
-			
-			foreach (ActionTask action in actions)
+			foreach (ActionTask action in actions.OfType<ActionTask>())
 				action.PauseAction();			
 		}
 
 		protected override void OnGizmos(){
-			foreach (ActionTask action in actions)
+			foreach (ActionTask action in actions.OfType<ActionTask>())
 				action.DrawGizmos();			
 		}
 
 		protected override void OnGizmosSelected(){
-			foreach (ActionTask action in actions)
+			foreach (ActionTask action in actions.OfType<ActionTask>())
 				action.DrawGizmosSelected();
+		}
+
+		string MissingTaskText(Object o){
+			var s = Equals(o, null)? "NULL ENTRY" : o.ToString();
+			s = s.Replace(gameObject.name + " ", "");
+			return string.Format("<color=#ff6457>* {0} *</color>", s);
+		}
+
+		//meaning that it's not a missing action. We want to keep those in
+		bool IsTrullyNull(Object o){
+			try {return o == null && o.GetType() != typeof(Object);}
+			catch{return true;}
 		}
 
 		////////////////////////////////////////
@@ -131,18 +161,22 @@ namespace NodeCanvas{
 
 		private ActionTask currentViewAction;
 
-		protected override void OnEditorValidate(){
-			for (int i = 0; i < actions.Count; i++){
-				if (actions[i] == null)
-					actions.RemoveAt(i);
-			}
+		private void OnDestroy(){
+			EditorApplication.delayCall += delegate {
+				foreach (Object o in actions)
+					if (o) DestroyImmediate(o, true);
+			};
 		}
 
-		private void OnDestroy(){
-			foreach(ActionTask action in actions){
-				var a = action;
-				EditorApplication.delayCall += ()=> { if (a) DestroyImmediate(a, true);	};
-			}
+		protected override void OnEditorValidate(){
+			ValidateList();
+		}
+
+		void ValidateList(){
+			for (int i = 0; i < actions.Count; i++){
+				if (IsTrullyNull(actions[i]))
+					actions.RemoveAt(i);
+			}			
 		}
 
 		public override Task CopyTo(GameObject go){
@@ -153,10 +187,10 @@ namespace NodeCanvas{
 			var newList = (ActionList)go.AddComponent<ActionList>();
 			Undo.RegisterCreatedObjectUndo(newList, "Copy List");
 			Undo.RecordObject(newList, "Copy List");
-			UnityEditor.EditorUtility.CopySerialized(this, newList);
+			EditorUtility.CopySerialized(this, newList);
 			newList.actions.Clear();
 
-			foreach (ActionTask action in actions){
+			foreach (ActionTask action in actions.OfType<ActionTask>()){
 				var copiedAction = action.CopyTo(go);
 				newList.AddAction(copiedAction as ActionTask);
 			}
@@ -179,42 +213,51 @@ namespace NodeCanvas{
 			if (this == null)
 				return;
 
+			//button to add new actions
 			EditorUtils.TaskSelectionButton(gameObject, typeof(ActionTask), delegate(Task a){ AddAction((ActionTask)a); });
 
-			//Check first for possibly removed actions
-			foreach (ActionTask action in actions.ToArray()){
-				if (action == null)
-					actions.Remove(action);
-			}
+			//check list and possibly remove trully null entries
+			ValidateList();
 
 			if (actions.Count == 0){
 				EditorGUILayout.HelpBox("No Actions", MessageType.None);
 				return;
 			}
 
-			//Then present them
+			//show the actions
 			EditorUtils.ReorderableList(actions, delegate(int i){
 
-				var action = actions[i];
+				var o = actions[i];
+				var action = actions[i] as ActionTask;
 				GUI.color = new Color(1, 1, 1, 0.25f);
 				EditorGUILayout.BeginHorizontal("box");
-				GUI.color = action.isActive? new Color(1,1,1,0.8f) : new Color(1,1,1,0.25f);
 
-				Undo.RecordObject(action, "Mute");
-				action.isActive = EditorGUILayout.Toggle(action.isActive, GUILayout.Width(18));
+				if (action != null){
 
-				GUI.backgroundColor = action == currentViewAction? Color.grey : Color.white;
-				if (GUILayout.Button(EditorUtils.viewIcon, GUILayout.Width(25), GUILayout.Height(18)))
-					currentViewAction = action == currentViewAction? null : action;
-				EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
-				GUI.backgroundColor = Color.white;
+					GUI.color = action.isActive? new Color(1,1,1,0.8f) : new Color(1,1,1,0.25f);
+					Undo.RecordObject(action, "Mute");
+					action.isActive = EditorGUILayout.Toggle(action.isActive, GUILayout.Width(18));
 
-				GUILayout.Label( (action.isRunning? "► " : action.isPaused? "<b>||</b> " : "") + action.taskInfo);
+					GUI.backgroundColor = action == currentViewAction? Color.grey : Color.white;
+					if (GUILayout.Button(EditorUtils.viewIcon, GUILayout.Width(25), GUILayout.Height(18)))
+						currentViewAction = action == currentViewAction? null : action;
+					EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
+					GUI.backgroundColor = Color.white;
+
+					GUILayout.Label( (action.isRunning? "► " : action.isPaused? "<b>||</b> " : "") + action.summaryInfo);
+
+				} else {
+
+					GUILayout.Label(MissingTaskText(o));
+					GUI.color = Color.white;
+				}
+
 				if (GUILayout.Button("X", GUILayout.Width(20))){
 					Undo.RecordObject(this, "List Remove Task");
-					actions.Remove(action);
-					Undo.DestroyObjectImmediate(action);
+					actions.RemoveAt(i);
+					Undo.DestroyObjectImmediate(o);
 				}
+
 				EditorGUIUtility.AddCursorRect(GUILayoutUtility.GetLastRect(), MouseCursor.Link);
 				EditorGUILayout.EndHorizontal();
 				GUI.color = Color.white;
@@ -225,15 +268,14 @@ namespace NodeCanvas{
 		}
 
 
-
 		public void ShowNestedActionsGUI(){
 
 			if (actions.Count == 1)
-				currentViewAction = actions[0];
+				currentViewAction = actions[0] as ActionTask;
 
 			if (currentViewAction != null){
 				EditorUtils.BoldSeparator();
-				EditorUtils.TaskTitlebar(currentViewAction);
+				currentViewAction.ShowInspectorGUI();
 			}
 		}
 

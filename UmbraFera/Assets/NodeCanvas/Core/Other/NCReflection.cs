@@ -45,11 +45,19 @@ namespace NodeCanvas{
 			#endif			
 		}
 
+		public static bool NCIsInterface(this Type type){
+			#if NETFX_CORE
+			return type.GetTypeInfo().IsInterface;
+			#else
+			return type.IsInterface;
+			#endif			
+		}
+
 		public static FieldInfo NCGetField(this Type type, string name){
 			#if NETFX_CORE
 			return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetTypeInfo().GetDeclaredField(name)).FirstOrDefault(field => field != null);
 			#else
-			return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetField(name)).FirstOrDefault(field => field != null);
+			return type.GetField(name, BindingFlags.Instance | BindingFlags.Public);
 			#endif
 		}
 
@@ -57,15 +65,14 @@ namespace NodeCanvas{
 			#if NETFX_CORE
 			return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetTypeInfo().GetDeclaredProperty(name)).FirstOrDefault(property => property != null);
 			#else
-			return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetProperty(name)).FirstOrDefault(property => property != null);
+			return type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public);
 			#endif
 		}
 
 		public static MethodInfo NCGetMethod(this Type type, string name, bool includePrivate = false){
 
 			#if NETFX_CORE
-			//return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetTypeInfo().GetDeclaredMethod(name)).FirstOrDefault(method => method != null);
-			List<MethodInfo> methods = GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetTypeInfo().DeclaredMethods).ToList();
+			var methods = GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetTypeInfo().DeclaredMethods).ToList();
 			foreach (MethodInfo m in methods){
 				if (m.Name == name){
 					if (m.IsPrivate && includePrivate)
@@ -76,7 +83,6 @@ namespace NodeCanvas{
 			}
 
 			#else
-			//return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetMethod(name)).FirstOrDefault(method => method != null);
 			if (includePrivate)
 				return type.GetMethod(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 			return type.GetMethod(name, BindingFlags.Instance | BindingFlags.Public);
@@ -95,21 +101,20 @@ namespace NodeCanvas{
 			#if NETFX_CORE
 			return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetTypeInfo().GetDeclaredEvent(name)).FirstOrDefault(method => method != null);
 			#else
-			return GetBaseTypes(type).OfType<Type>().Select(baseType => baseType.GetEvent(name)).FirstOrDefault(method => method != null);
+			return type.GetEvent(name, BindingFlags.Instance | BindingFlags.Public);
 			#endif			
 		}
 
 		public static FieldInfo[] NCGetFields(this Type type){
 
-			var fields = new List<FieldInfo>();
 			#if NETFX_CORE
+			var fields = new List<FieldInfo>();
 			foreach (Type t in GetBaseTypes(type).OfType<Type>())
 				fields.AddRange(t.GetTypeInfo().DeclaredFields);
-			#else
-			foreach (Type t in GetBaseTypes(type).OfType<Type>())
-				fields.AddRange(t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly));
-			#endif
 			return fields.ToArray();
+			#else
+			return type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+			#endif
 		}
 
 
@@ -177,7 +182,15 @@ namespace NodeCanvas{
 
 			var types = new List<Type>();
 		    foreach(Assembly ass in System.AppDomain.CurrentDomain.GetAssemblies())
-		    	types.AddRange(ass.GetTypes());
+		    	try
+		    	{
+		    		types.AddRange(ass.GetTypes());
+		    	}
+		    	catch
+		    	{
+		    		Debug.Log(ass.FullName + " will be excluded");
+		    		continue;
+		    	}
 		    return types;
 		    #endif
 		}

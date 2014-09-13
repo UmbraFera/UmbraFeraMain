@@ -11,7 +11,7 @@ namespace NodeCanvas.BehaviourTrees{
 	[Icon("Set")]
 	public class BTSetter : BTDecorator{
 
-		public BBGameObject agentToSet= new BBGameObject();
+		public BBGameObject agentToSet;
 
 		protected override Status OnExecute(Component agent, Blackboard blackboard){
 

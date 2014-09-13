@@ -11,7 +11,7 @@ using System.Collections;
 
 namespace NodeCanvas.MySystem{
 
-	public class MySystem : Graph{
+	public class MySystem : Graph {
 
 		//Return the base node type
 		public override System.Type baseNodeType{

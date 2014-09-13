@@ -43,18 +43,9 @@ namespace NodeCanvas{
 			set {_customName = value;}
 		}
 
-
-		public string tagName{
-			get {return _tagName;}
-			private set {_tagName = value;}
-		}
-
 		new public string name{
 			get {return nodeName;}
-		}
-
-		new public string tag{
-			get {return tagName;}
+			set {nodeName = value;}
 		}
 
 		///The title name of the node shown in the window if editor is not in Icon Mode. This is a property so title name may change instance wise
@@ -70,7 +61,13 @@ namespace NodeCanvas{
 				}
 				return _nodeName;
 			}
-			private set {customName = value;}
+			set {customName = value;}
+		}
+
+		///The node tag. Useful for finding nodes through code
+		new public string tag{
+			get {return _tagName;}
+			set {_tagName = value;}
 		}
 
 		///The numer of possible inputs. -1 for infinite
@@ -114,7 +111,11 @@ namespace NodeCanvas{
 		///The current status of the node
 		public Status status{
 			get {return _status;}
-			protected set {_status = value;}
+			protected set
+			{
+				if (_status != value)
+					_status = value;
+			}
 		}
 
 		///The node's ID in the graph
@@ -168,14 +169,14 @@ namespace NodeCanvas{
 				Debug.LogWarning("Node can't connect to itself");
 				return false;
 			}
-
+/*
 			foreach (Connection c in sourceNode.outConnections){
 				if (c.targetNode == this){
 					Debug.LogWarning("Nodes are already connected");
 					return false;
 				}
 			}
-
+*/
 			if (sourceNode.outConnections.Count >= sourceNode.maxOutConnections && sourceNode.maxOutConnections != -1){
 				Debug.LogWarning("Source node can have no more out connections.");
 				return false;
@@ -218,7 +219,7 @@ namespace NodeCanvas{
 
 		///A little helper function to log errors easier
 		protected Status Error(string log){
-			Debug.LogError("<b>Graph Error:</b> '" + log + "' On node '" + nodeName + "' ID " + ID + " | On graph '" + graph.graphName + "'", graph.gameObject);
+			Debug.LogError("<b>Graph Error:</b> '" + log + "' On node '" + nodeName + "' ID " + ID + " | On graph '" + graph.name + "'", graph.gameObject);
 			return Status.Error;
 		}
 
@@ -359,7 +360,6 @@ namespace NodeCanvas{
 		private bool _childrenCollapsed = false;
 
 		private Texture2D _icon;
-		private string _inheritedIconName;
 		private string _nodeDescription;
 
 		private bool inResizeMode{get;set;}
@@ -433,7 +433,7 @@ namespace NodeCanvas{
 		private Texture2D icon{
 			get
 			{
-				if (_icon == null /* || this is ITaskAssignable */){
+				if (_icon == null || this is ITaskAssignable){
 					var assignable = this as ITaskAssignable;
 					if (assignable != null && assignable.task != null && assignable.task.icon != null){
 						_icon = assignable.task.icon;
@@ -447,7 +447,7 @@ namespace NodeCanvas{
 			}
 		}
 
-		//Is NC in icon mode?
+		//Is NC in icon mode && node has an icon?
 		protected bool inIconMode{
 			get {return NCPrefs.iconMode && icon != null;}
 		}
@@ -516,12 +516,11 @@ namespace NodeCanvas{
 			if (childrenCollapsed){
 				var r = new Rect(nodeRect.x, nodeRect.yMax + 10, nodeRect.width, 20);
 				EditorGUIUtility.AddCursorRect(r, MouseCursor.Link);
-				if (GUI.Button(r, "HIDDEN", "box"))
+				if (GUI.Button(r, "COLLAPSED", "box"))
 					childrenCollapsed = false;
 			}
 
 			GUI.color = isActive? Color.white : new Color(0.9f, 0.9f, 0.9f, 0.8f);
-
 			GUI.color = Graph.currentSelection == this? new Color(0.9f, 0.9f, 1) : GUI.color;
 			GUI.color = Application.isPlaying? new Color(0.9f,0.9f,0.9f) : GUI.color;
 			nodeRect = GUILayout.Window (ID, nodeRect, NodeWindowGUI, string.Empty, "window");
@@ -557,10 +556,19 @@ namespace NodeCanvas{
 
 			GUI.color = Color.white;
 			EditorGUIUtility.AddCursorRect(nodeRect, MouseCursor.Link);
+/*
+			var assignable = this as ITaskAssignable;
+			if (assignable && assignable.task != null && assignable.task.agentIsOverride){
+				var overrideRect = new Rect(nodeRect.x, nodeRect.y-18, nodeRect.width, 18);
+				GUI.Box(overrideRect, assignable.task.agentInfo);
+			}
+*/
 		}
 
 		//removes the text color that some nodes add with html tags
 		string StripNameColor(string name){
+			if (string.IsNullOrEmpty(name))
+				return name;
 			if (name.StartsWith("<") && name.EndsWith(">")){
 				name = name.Replace( name.Substring (0, name.IndexOf(">")+1), "" );
 				name = name.Replace( name.Substring (name.IndexOf("<"), name.LastIndexOf(">")+1 - name.IndexOf("<")), "" );
@@ -579,19 +587,23 @@ namespace NodeCanvas{
 				GUI.backgroundColor = Color.white;
 				GUI.color = Color.white;
 			} else {
-				var title = nodeName;
-				var defaultColor = "<color=#eed9a7>";
-				if (!EditorGUIUtility.isProSkin){
-					title = StripNameColor(title);
-					defaultColor = "<color=#222222>";
+				var stripedTitle = StripNameColor(nodeName);
+				if (!string.IsNullOrEmpty(stripedTitle)){
+					var title = nodeName;
+					var defaultColor = "<color=#eed9a7>";
+					if (!EditorGUIUtility.isProSkin){
+						title = StripNameColor(title);
+						defaultColor = "<color=#222222>";
+					}
+					GUILayout.Label("<b><size=12>" + defaultColor + title + "</color></size></b>", centerLabel);
 				}
-				GUILayout.Label("<b><size=12>" + defaultColor + title + "</color></size></b>", centerLabel);
 			}
 			///
 
 
 			var e = Event.current;
 
+/*
 		    var scaleNodeRect= new Rect(nodeRect.width-10,nodeRect.height-10, 8, 8);
 		    GUI.Box(scaleNodeRect, "", "nodeScaleBtn");
 
@@ -600,19 +612,21 @@ namespace NodeCanvas{
 		    	inResizeMode = true;
 		    	e.Use();
 		    }
+*/
 
 			if (Graph.allowClick && e.button != 2 && e.type == EventType.MouseDown){
 
 				Graph.currentSelection = this;
 				nodeIsPressed = true;
 
-				if (e.clickCount == 2){
+				if (e.button == 0 && e.clickCount == 2){
 		    		if (this is INestedNode && (this as INestedNode).nestedGraph != null ){
 	    				graph.nestedGraphView = (this as INestedNode).nestedGraph;
 	    				nodeIsPressed = false;
 		    		} else {
 			    		AssetDatabase.OpenAsset(MonoScript.FromMonoBehaviour(this));
 		    		}
+		    		e.Use();
 		    	}
 
 		    	if (e.control){
@@ -630,16 +644,64 @@ namespace NodeCanvas{
 	    			Graph.PostGUI += delegate { SortConnectionsByPositionX(); };
 	    		OnNodeReleased();
 	    	}
+
 	    	///
+
+	        ////STATUS MARK ICONS////
+	        if (Application.isPlaying){
+
+		        var markRect = new Rect(5, 5, 15, 15);
+		        if (status == Status.Success){
+		        	GUI.color = successColor;
+		        	GUI.Box(markRect, "", new GUIStyle("checkMark"));
+
+		        } else if (status == Status.Running){
+		        	GUI.Box(markRect, "", new GUIStyle("clockMark"));
+
+		        } else if (status == Status.Failure){
+		        	GUI.color = failureColor;
+		        	GUI.Box(markRect, "", new GUIStyle("xMark"));
+		        }
+		    }
+	        ///
+
+	        ////NODE GUI////
+	        GUI.color = Color.white;
+	        GUI.skin = null;
+	        GUI.skin.label.richText = true;
+
+	        GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+
+			GUILayout.BeginVertical();
+
+			OnNodeGUI();
+
+			if (this is ITaskAssignable){
+				var assignable = this as ITaskAssignable;
+				var missing = MissingTask(assignable.serializedTask);
+				if (missing != null){
+					GUILayout.Label(missing);
+				} else {
+					var task = (this as ITaskAssignable).task;
+					if (task != null){
+						GUILayout.Label(NCPrefs.showTaskSummary? task.summaryInfo : string.Format("<b>{0}</b>", task.name));
+					} else {
+						GUILayout.Label("No Task");
+					}
+				}
+			}
+
+			GUILayout.EndVertical();
+
+			GUI.skin.label.alignment = TextAnchor.UpperLeft;
+
 
 	    	////CONTEXT MENU////
 		    if (Graph.allowClick && e.button == 1 && e.type == EventType.MouseUp){
 
 		    	if (Graph.multiSelection.Count > 0){
 		            var menu = new GenericMenu();
-
 		            menu.AddItem (new GUIContent ("Delete Selected Nodes"), false, delegate{ foreach (Node node in Graph.multiSelection) graph.RemoveNode(node); });
-
 			        menu.ShowAsContext();
 			        e.Use();
 			        return;
@@ -659,7 +721,7 @@ namespace NodeCanvas{
 			            menu.AddItem (new GUIContent (isActive? "Disable" : "Enable"), false, delegate{SetActive(!isActive);});
 
 					if (this is IAutoSortable && outConnections.Count > 0)
-						menu.AddItem (new GUIContent (childrenCollapsed? "Show Children" : "Hide Children"), false, delegate{ childrenCollapsed = !childrenCollapsed; });
+						menu.AddItem (new GUIContent (childrenCollapsed? "Expand Children" : "Collapse Children"), false, delegate{ childrenCollapsed = !childrenCollapsed; });
 
 					if (this is ITaskAssignable){
 
@@ -717,46 +779,8 @@ namespace NodeCanvas{
 		    }
 		    ///
 
-	        ////STATUS MARK ICONS////
-	        if (Application.isPlaying){
 
-		        var markRect = new Rect(5, 5, 15, 15);
-		        if (status == Status.Success){
-		        	GUI.color = successColor;
-		        	GUI.Box(markRect, "", new GUIStyle("checkMark"));
 
-		        } else if (status == Status.Running){
-		        	GUI.Box(markRect, "", new GUIStyle("clockMark"));
-
-		        } else if (status == Status.Failure){
-		        	GUI.color = failureColor;
-		        	GUI.Box(markRect, "", new GUIStyle("xMark"));
-		        }
-		    }
-	        ///
-
-	        ////NODE GUI////
-	        GUI.color = Color.white;
-	        GUI.skin = null;
-	        GUI.skin.label.richText = true;
-	        GUILayout.BeginHorizontal();
-			GUILayout.FlexibleSpace();
-			GUILayout.BeginVertical();
-
-			OnNodeGUI();
-
-			if (this is ITaskAssignable){
-				var task = (this as ITaskAssignable).task;
-				if (task != null){
-					GUILayout.Label(NCPrefs.showTaskSummary? task.taskInfo : string.Format("<b>{0}</b>", task.taskName));
-				} else {
-					GUILayout.Label("No Task");
-				}
-			}
-
-			GUILayout.EndVertical();
-			GUILayout.FlexibleSpace();
-			GUILayout.EndHorizontal();
 
 		    ////LAST (BUT NOT LEAST)///
 		    if (inResizeMode){
@@ -790,6 +814,7 @@ namespace NodeCanvas{
 		    }
 		}
 
+
 		//The comments of the node sitting next or bottom of it
 		void DrawNodeComments(){
 
@@ -816,10 +841,10 @@ namespace NodeCanvas{
 		//Shows the tag label on the left of the node if it is tagged
 		void DrawNodeTag(){
 
-			if (!string.IsNullOrEmpty(tagName)){
-				var size = new GUIStyle("label").CalcSize(new GUIContent(tagName));
+			if (!string.IsNullOrEmpty(tag)){
+				var size = new GUIStyle("label").CalcSize(new GUIContent(tag));
 				var tagRect = new Rect(nodeRect.x - size.x -10, nodeRect.y, size.x, size.y);
-				GUI.Label(tagRect, tagName);
+				GUI.Label(tagRect, tag);
 				tagRect.width = 12;
 				tagRect.height = 12;
 				tagRect.y += tagRect.height + 5;
@@ -857,8 +882,8 @@ namespace NodeCanvas{
 				EditorUtils.TextFieldComment(customName, "Name...");
 			}
 
-			tagName = EditorGUILayout.TextField(tagName );
-			EditorUtils.TextFieldComment(tagName, "Tag...");
+			tag = EditorGUILayout.TextField(tag );
+			EditorUtils.TextFieldComment(tag, "Tag...");
 
 			GUILayout.EndHorizontal();
 
@@ -867,10 +892,59 @@ namespace NodeCanvas{
 
 			EditorUtils.Separator();
 			OnNodeInspectorGUI();
+			TaskAssignableGUI();
 
 			if (GUI.changed)
 				EditorUtility.SetDirty(this);
 		}
+
+
+		void TaskAssignableGUI(){
+
+			if (this is ITaskAssignable){
+
+				System.Type taskType = null;
+				foreach(System.Type iType in this.GetType().GetInterfaces()) {
+				    if (iType.IsGenericType && iType.GetGenericTypeDefinition() == typeof(ITaskAssignable<>)){
+				        taskType = iType.GetGenericArguments()[0];
+				        break;
+				    }
+				}
+
+				if (taskType != null){
+
+					var assignable = this as ITaskAssignable;
+					string missing = MissingTask(assignable.serializedTask);
+					if ( missing != null ){
+						GUILayout.Label("Missing: " + missing );
+						if (GUILayout.Button("Remove Missing")){
+							DestroyImmediate(assignable.serializedTask, true);
+							assignable.task = null;
+						}
+						return;
+					}
+
+					if (assignable.task == null){
+
+						EditorUtils.TaskSelectionButton(gameObject, taskType, delegate(Task t){assignable.task = t;});
+
+					} else {
+
+						assignable.task.ShowInspectorGUI();
+					}	
+				}
+			}
+		}
+
+		string MissingTask(Object o){
+			if (!Equals(o, null) && o.GetType() == typeof(Object) && o.ToString() != "null"){
+				var s = o.ToString();
+				s = s.Replace(gameObject.name + " ", "");
+				return string.Format("<color=#ff6457>* {0} *</color>", s);
+			}
+			return null;
+		}
+
 
 		//Duplicate node
 		public Node Duplicate(){
@@ -1003,13 +1077,13 @@ namespace NodeCanvas{
 						clickedPort = null;
 						
 						System.Action<System.Type> Selected = delegate(System.Type type){
-							var newNode = graph.AddNewNode(type);
+							var newNode = graph.AddNode(type);
 							newNode.nodeRect.center = pos;
 							graph.ConnectNode(source, newNode, index);
 							newNode.SortConnectionsByPositionX();
 						};
 
-						EditorUtils.ShowTypeSelectionMenu(graph.baseNodeType, Selected);
+						EditorUtils.GetTypeSelectionMenu(graph.baseNodeType, Selected).ShowAsContext();
 						e.Use();
 					}
 				}

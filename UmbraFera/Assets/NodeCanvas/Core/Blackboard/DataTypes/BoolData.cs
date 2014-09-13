@@ -24,7 +24,7 @@ namespace NodeCanvas.Variables{
 
 		#if UNITY_EDITOR
 		override public void ShowDataGUI(){
-			objectValue = UnityEditor.EditorGUILayout.Toggle(value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+			objectValue = UnityEditor.EditorGUILayout.Toggle(value, layoutOptions);
 		}
 
 		#endif

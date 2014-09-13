@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace NodeCanvas.StateMachines{
 
-	///This class essentially a front-end to executing a FSM (FSM)
+	///This class is essentially a front-end to executing an FSM
 	[AddComponentMenu("NodeCanvas/FSM Owner")]
 	public class FSMOwner : GraphOwner {
 
@@ -18,17 +18,17 @@ namespace NodeCanvas.StateMachines{
 			get {return typeof(FSM);}
 		}
 
-		///The current status name
+		///The current state name
 		public string currentStateName{
 			get {return FSM != null? FSM.currentStateName : null;}
 		}
 
-		///The last status name
+		///The last state name
 		public string lastStateName{
 			get {return FSM != null? FSM.lastStateName : null;}
 		}
 
-		///Enter an FSM Status by it's name
+		///Enter an FSM state by it's name
 		public FSMState TriggerState(string stateName){
 
 			if (FSM != null)
@@ -36,7 +36,7 @@ namespace NodeCanvas.StateMachines{
 			return null;
 		}
 
-		///Get all status names, excluding non-named states
+		///Get all state names, excluding non-named states
 		public List<string> GetStateNames(){
 			if (FSM != null)
 				return FSM.GetStateNames();

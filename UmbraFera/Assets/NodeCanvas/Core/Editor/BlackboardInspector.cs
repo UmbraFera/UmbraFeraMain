@@ -18,6 +18,9 @@ namespace NodeCanvasEditor{
 
 		override public void OnInspectorGUI(){
 			
+			if (Event.current.isMouse)
+				Repaint();
+
 			(target as Blackboard).ShowBlackboardGUI();
 			EditorUtils.EndOfInspector();
 			if (Application.isPlaying)

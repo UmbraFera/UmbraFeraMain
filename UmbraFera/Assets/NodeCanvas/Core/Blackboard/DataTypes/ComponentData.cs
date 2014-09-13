@@ -105,7 +105,7 @@ namespace NodeCanvas.Variables{
 
 		public override void ShowDataGUI(){
 
-			value = UnityEditor.EditorGUILayout.ObjectField(value, varType, true, GUILayout.MaxWidth(90), GUILayout.ExpandWidth(true)) as Component;
+			value = UnityEditor.EditorGUILayout.ObjectField(value, varType, true, layoutOptions) as Component;
 
 			if (GUILayout.Button("", GUILayout.Width(10), GUILayout.Height(14))){
 				var menu = new UnityEditor.GenericMenu();

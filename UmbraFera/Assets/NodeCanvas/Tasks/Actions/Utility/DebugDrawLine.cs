@@ -3,7 +3,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
-	[Category("✫ Utilities")]
+	[Category("✫ Utility")]
 	public class DebugDrawLine : ActionTask {
 
 		public BBVector from;

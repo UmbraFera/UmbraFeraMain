@@ -6,27 +6,26 @@ namespace NodeCanvas.Actions{
 
 	[Category("✫ Script Control")]
 	[Description("Calls a function that has signature of 'public Status NAME()'. Return Status.Success, Failure or Running within that function")]
-	[AgentType(typeof(Transform))]
 	public class ImplementedAction : ActionTask {
 
 		[RequiredField]
-		public string methodName;
+		public string scriptName =  typeof(Component).AssemblyQualifiedName;
 		[RequiredField]
-		public string scriptName;
+		public string methodName;
 
-		private Component script;
 		private MethodInfo method;
 		private Status status = Status.Resting;
+
+		public override System.Type agentType{
+			get {return System.Type.GetType(scriptName);}
+		}
 
 		protected override string info{
 			get {return string.Format("({0}.{1})", agentInfo, methodName);}
 		}
 
 		protected override string OnInit(){
-			script = agent.GetComponent(scriptName);
-			if (script == null)
-				return "Can't find script";
-			method = script.GetType().NCGetMethod(methodName);
+			method = agent.GetType().NCGetMethod(methodName);
 			if (method == null)
 				return "Method not found";
 			return null;
@@ -42,7 +41,7 @@ namespace NodeCanvas.Actions{
 
 		void Forward(){
 
-			status = (Status)method.Invoke(script, null);
+			status = (Status)method.Invoke(agent, null);
 
 			if (status == Status.Success){
 				EndAction(true);
@@ -63,26 +62,43 @@ namespace NodeCanvas.Actions{
 		///////////GUI AND EDITOR STUFF/////////
 		////////////////////////////////////////
 		#if UNITY_EDITOR
+
+
+		/////UPDATING
+		protected override void OnEditorValidate(){
+			if (agentType == null)
+				scriptName = EditorUtils.GetType(scriptName, typeof(Component)).AssemblyQualifiedName;
+		}
+		///////	
 		
 		protected override void OnTaskInspectorGUI(){
 
-			if (agent == null){
-				UnityEditor.EditorGUILayout.HelpBox("This Action needs the Agent to be known. Currently the Agent is unknown", UnityEditor.MessageType.Error);
-				return;
+			if (!Application.isPlaying && agent == null && GUILayout.Button("Alter Type")){
+				System.Action<System.Type> TypeSelected = delegate(System.Type t){
+					var newName = t.AssemblyQualifiedName;
+					if (scriptName != newName){
+						scriptName = newName;
+						methodName = null;
+					}
+				};
+
+				EditorUtils.ShowConfiguredTypeSelectionMenu(typeof(Component), TypeSelected);
 			}
 
-			if (agent.GetComponent(scriptName) == null){
-				scriptName = null;
-				methodName = null;
-			}
+			if (!Application.isPlaying && GUILayout.Button("Select Action Method")){
 
-			if (GUILayout.Button("Select Action Method")){
-				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, new List<System.Type>{typeof(Status)}, null, delegate(MethodInfo method){
-					scriptName = method.ReflectedType.Name;
+				System.Action<MethodInfo> MethodSelected = delegate(MethodInfo method){
+					scriptName = method.DeclaringType.AssemblyQualifiedName;
 					methodName = method.Name;
-					if (Application.isPlaying)
-						OnInit();
-				}, 0, false);
+				};
+
+				if (agent != null){
+					EditorUtils.ShowGameObjectMethodSelectionMenu(agent.gameObject, new List<System.Type>{typeof(Status)}, null, MethodSelected, 0, false);
+				} else {
+					var menu = EditorUtils.GetMetodSelectionMenu(agentType, new List<System.Type>{typeof(Status)}, null, MethodSelected, 0, false);
+					menu.ShowAsContext();
+					Event.current.Use();
+				}
 			}
 
 			if (!string.IsNullOrEmpty(methodName))

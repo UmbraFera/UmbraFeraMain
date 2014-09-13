@@ -1,0 +1,33 @@
+//STATES   ID,   EVENTS
+speedingup,0,0:1:4:8:13,517,134,This state happens when reaching max speed;
+stopping,1,2:5:7,1003,45,This state happens when sees redlight;
+maintaining,2,6:12:15,942,686,This state happens when at target speed;
+stopped,3,3,1143,401,This state happens when car stopped;
+slowingDown,4,9:10:11:14,471,557,This state happens when a car is bloking
+|
+
+speed=0;
+light=red;
+firstMarkerSet=false;
+secondMarkerSet=false;
+maxSpeed=3;
+distanceToCar=999;
+minDistanceToCar=16
+|
+
+red,0,1,,;
+tick,1,2,speed>=maxSpeed,speed=maxSpeed;
+tick,2,3,speed<=0,;
+green,3,0,,;
+tick,4,0,speed<maxSpeed:distanceToCar>=minDistanceToCar,speed=speed+1;
+tick,5,1,speed>0,speed=speed-1;
+red,6,1,,;
+green,7,0,,;
+tick,8,4,distanceToCar<minDistanceToCar,;
+tick,9,4,speed>0:distanceToCar<=minDistanceToCar,speed=speed-1;
+tick,10,0,distanceToCar>minDistanceToCar,;
+red,11,1,,;
+tick,12,4,distanceToCar<=minDistanceToCar,speed=speed-2;
+yellow,13,1,,;
+yellow,14,1,,;
+yellow,15,1,,

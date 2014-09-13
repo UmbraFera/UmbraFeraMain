@@ -9,12 +9,12 @@ namespace NodeCanvas.Variables{
 
 	///Marks the BBVariable possible to only pick values from blackboard
 	[AttributeUsage(AttributeTargets.Field)]
-	class BlackboardOnlyAttribute : Attribute{
+	public class BlackboardOnlyAttribute : Attribute{
 	}
 
 	///Defines a derived type for an IMultiCastable BBVariable
 	[AttributeUsage(AttributeTargets.Field)]
-	class VariableType : Attribute{
+	public class VariableType : Attribute{
 
 		public System.Type type;
 
@@ -25,6 +25,7 @@ namespace NodeCanvas.Variables{
 
 	///Denotes that the BBVariable can be set to other derived types of the original contained.
 	interface IMultiCastable{
+		System.Type baseType{get;}
 		System.Type type {get;set;}
 	}
 
@@ -98,12 +99,13 @@ namespace NodeCanvas.Variables{
 			}
 		}
 
-		//Used when the BBVariable is set to read/write from the non-local bb
+		//Used when the BBVariable is set to read/write from the non-local blackboard
 		private Blackboard overrideBB{
 			get
 			{
 				if (string.IsNullOrEmpty(dataName) || !dataName.Contains("/"))
 					return null;
+					
 				string prefix = dataName.Substring(0, dataName.IndexOf("/"));
 				if (Blackboard.allBlackboards.ContainsKey(prefix))
 					return Blackboard.allBlackboards[prefix];
@@ -187,7 +189,7 @@ namespace NodeCanvas.Variables{
 			get {return objectValue == null || objectValue.Equals(null);}
 		}
 
-		///The type of the value that this object has.
+		///The type of the value that this object holds.
 		virtual public Type varType{
 			get
 			{
@@ -197,7 +199,7 @@ namespace NodeCanvas.Variables{
 			}
 		}
 
-		//The System.Object value.
+		///The System.Object value of the contained or linked variable.
 		public object objectValue{
 			get
 			{
@@ -222,6 +224,9 @@ namespace NodeCanvas.Variables{
 		///Read the specified type from the blackboard
 		protected T Read<T>(){
 
+			if (string.IsNullOrEmpty(dataName))
+				return default(T);
+
 			if (dataRef != null){
 				if (dataRef.objectValue == null || dataRef.objectValue.Equals(null))
 					return default(T);
@@ -230,12 +235,12 @@ namespace NodeCanvas.Variables{
 
 			if (overrideBB != null){
 				dataRef = overrideBB.GetData(dataName.Substring( dataName.LastIndexOf("/") + 1), typeof(T) );
-				return overrideBB.GetDataValue<T>( dataName.Substring( dataName.LastIndexOf("/") + 1) );
+				if (dataRef) return (T)dataRef.objectValue;
 			}
 
 			if (bb != null){
 				dataRef = bb.GetData(dataName, typeof(T));
-				return bb.GetDataValue<T>(dataName);
+				if (dataRef) return (T)dataRef.objectValue;
 			}
 			
 			return default(T);
@@ -243,6 +248,9 @@ namespace NodeCanvas.Variables{
 
 		///Write the specified object to the blackboard
 		protected void Write(object o){
+
+			if (string.IsNullOrEmpty(dataName))
+				return;
 
 			if (dataRef != null){
 				dataRef.objectValue = o;
@@ -261,8 +269,6 @@ namespace NodeCanvas.Variables{
 
 			Debug.LogError("BBVariable has neither linked VariableData, nor blackboard");
 		}
-
-		private object value{get;set;}
 	}
 
 
@@ -328,7 +334,7 @@ namespace NodeCanvas.Variables{
 	public class BBSprite : BBVariable<Sprite>{}
 	/////
 
-	////SPECIFIC LIST OBJECTS
+	////SPECIFIC LISTS
 	[Serializable]
 	public class BBGameObjectList : BBListVariable<GameObject>{}
 	[Serializable]
@@ -351,6 +357,9 @@ namespace NodeCanvas.Variables{
 		public override Type varType{
 			get {return type;}
 		}
+		public Type baseType{
+			get {return typeof(Component);}
+		}
 		public Type type{
 			get {return Type.GetType(_typeName);}
 			set {_typeName = value.AssemblyQualifiedName;}
@@ -366,6 +375,9 @@ namespace NodeCanvas.Variables{
 		public override Type varType{
 			get {return type;}
 		}
+		public Type baseType{
+			get {return typeof(UnityEngine.Object);}
+		}
 		public Type type{
 			get {return Type.GetType(_typeName);}
 			set {_typeName = value.AssemblyQualifiedName;}
@@ -377,22 +389,33 @@ namespace NodeCanvas.Variables{
 	public class BBEnum : BBVariable, IMultiCastable{
 
 		[SerializeField]
-		private string _value;
+		private string _value = string.Empty;
 		[SerializeField]
 		private string _typeName = typeof(Enum).AssemblyQualifiedName;
 		public Enum value{
-			get	{return useBlackboard? Read<Enum>() : (Enum)Enum.Parse(type, _value);}
+			get
+			{
+				if (useBlackboard) return Read<Enum>();
+				try {return (Enum)Enum.Parse(type, _value);}
+				catch{return null;}
+			}
 			set {if (useBlackboard) Write(value); else _value = Enum.GetName(type, value) ;}
 		}
 		public override Type varType{
 			get {return type;}
 		}
+		public Type baseType{
+			get {return typeof(Enum);}
+		}
 		public Type type{
 			get {return Type.GetType(_typeName);}
 			set
 			{
-				_typeName = value.AssemblyQualifiedName;
-				_value = Enum.GetNames(value)[0];
+				if (_typeName != value.AssemblyQualifiedName){
+					_typeName = value.AssemblyQualifiedName;
+					if (value != (typeof(Enum))) //dont if ts the base Enum type
+						_value = Enum.GetNames(value)[0];
+				}
 			}
 		}
 	}
@@ -406,6 +429,9 @@ namespace NodeCanvas.Variables{
 		public override Type varType{
 			get {return type;}
 		}
+		public Type baseType{
+			get {return typeof(object);}
+		}
 		public Type type{
 			get {return Type.GetType(_typeName);}
 			set {_typeName = value.AssemblyQualifiedName;}
@@ -417,13 +443,15 @@ namespace NodeCanvas.Variables{
 	}
 	////
 
-
 	///A collection of multiple BBVariables
 	[Serializable]
-	public class BBVariableSet{
+	public partial class BBVariableSet{
 
 		[SerializeField]
 		private string selectedTypeName = null;
+
+		private BBVariable _selectedBBVariable;
+		private bool hasInit;
 
 		//value set
 		[SerializeField]
@@ -452,41 +480,11 @@ namespace NodeCanvas.Variables{
 		private BBObject unityObjectValue    = new BBObject();
 		[SerializeField]
 		private BBEnum enumValue             = new BBEnum();
-		//
+		//[SerializeField]
+		//private BBVar systemObjectValue      = new BBVar();
+		
 
-		private List<BBVariable> allVariables{
-			get
-			{
-				return new List<BBVariable>{
-					boolValue,
-					floatValue,
-					intValue,
-					stringValue,
-					vector2Value,
-					vectorValue,
-					quaternionValue,
-					colorValue,
-					curveValue,
-					goValue,
-					componentValue,
-					unityObjectValue,
-					enumValue
-				};
-			}
-		}
-
-		public List<Type> availableTypes{
-			get
-			{
-				var typeList = new List<Type>();
-				typeList.Add(typeof(Component));
-				typeList.Add(typeof(UnityEngine.Object));
-				typeList.Add(typeof(Enum));
-				foreach (BBVariable bbVar in allVariables)
-					typeList.Add(bbVar.varType);
-				return typeList;
-			}
-		}
+		partial void AddExtraBBVariablesToSet(List<BBVariable> bbVarSet);
 
 		public Blackboard bb{
 			set
@@ -504,6 +502,46 @@ namespace NodeCanvas.Variables{
 			}
 		}
 
+		private List<BBVariable> allVariables{
+			get
+			{
+				var bbVarSet = new List<BBVariable>{
+					boolValue,
+					floatValue,
+					intValue,
+					stringValue,
+					vector2Value,
+					vectorValue,
+					quaternionValue,
+					colorValue,
+					curveValue,
+					goValue,
+					componentValue,
+					unityObjectValue,
+					enumValue
+				};
+
+				AddExtraBBVariablesToSet(bbVarSet);
+				
+				//system object last...
+				//bbVarSet.Add(systemObjectValue);
+				return bbVarSet;
+			}
+		}
+
+		public List<Type> availableTypes{
+			get
+			{
+				var typeList = new List<Type>();
+				foreach (BBVariable bbVar in allVariables){
+					if (bbVar is IMultiCastable)
+						typeList.Add( (bbVar as IMultiCastable).baseType );
+					typeList.Add(bbVar.varType);
+				}
+				return typeList;
+			}
+		}
+
 		public Type selectedType{
 			get
 			{
@@ -515,39 +553,51 @@ namespace NodeCanvas.Variables{
 			}
 			set
 			{
+				selectedBBVariable = null;
 				selectedTypeName = value != null? value.ToString() : null ;
-				if (typeof(Component).NCIsAssignableFrom(value))
-					componentValue.type = value;
-				if (typeof(UnityEngine.Object).NCIsAssignableFrom(value))
-					unityObjectValue.type = value;
-				if (typeof(Enum).NCIsAssignableFrom(value))
-					enumValue.type = value;
+
+				foreach (BBVariable bbVar in allVariables){
+					var multiCastable = bbVar as IMultiCastable;
+					if (multiCastable != null && multiCastable.baseType.NCIsAssignableFrom(value) )
+						multiCastable.type = value;
+				}
 			}
 		}
 
 		public BBVariable selectedBBVariable{
 			get
 			{
+				if (_selectedBBVariable != null || hasInit)
+					return _selectedBBVariable;
+
 				foreach (BBVariable bbVar in allVariables){
-					if (bbVar.varType == selectedType)
-						return bbVar;
+					if (bbVar.varType == selectedType){
+						_selectedBBVariable = bbVar;
+						break;
+					}
 				}
-				return null;
+
+				if (Application.isPlaying) hasInit = true;
+				return _selectedBBVariable;
+			}
+			private set
+			{
+				_selectedBBVariable = value;
+				hasInit = false;
 			}
 		}
 
 		public object objectValue{
 			get
 			{
-				if (selectedType == null)
-					return null;
-				return selectedBBVariable.objectValue;
+				if (selectedBBVariable != null)
+					return selectedBBVariable.objectValue;
+				return null;
 			}
 			set
 			{
-				if (selectedType == null)
-					return;
-				selectedBBVariable.objectValue = value;
+				if (selectedBBVariable != null)
+					selectedBBVariable.objectValue = value;
 			}
 		}
 

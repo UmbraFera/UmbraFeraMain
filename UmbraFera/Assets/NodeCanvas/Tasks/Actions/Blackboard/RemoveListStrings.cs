@@ -5,7 +5,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
-	[Category("✫ Blackboard")]
+	[Category("✫ Blackboard/Lists")]
 	[Description("Remove a number of strings from the target list")]
 	public class RemoveListStrings : ActionTask {
 

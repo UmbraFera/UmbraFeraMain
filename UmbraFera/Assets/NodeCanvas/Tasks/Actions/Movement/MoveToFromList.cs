@@ -57,7 +57,6 @@ namespace NodeCanvas.Actions{
 		void Go(){
 
 			var targetPos = targetList.value[index].transform.position;
-			
 			if (lastRequest != targetPos){
 				if ( !navAgent.SetDestination( targetPos) ){
 					EndAction(false);
@@ -80,6 +79,15 @@ namespace NodeCanvas.Actions{
 
 		protected override void OnPause(){
 			OnStop();
+		}
+
+		protected override void OnGizmosSelected(){
+			if (agent && targetList.value != null){
+				foreach (GameObject go in targetList.value){
+					if (go)
+						Gizmos.DrawSphere(go.transform.position, 0.1f);
+				}
+			}
 		}
 	}
 }

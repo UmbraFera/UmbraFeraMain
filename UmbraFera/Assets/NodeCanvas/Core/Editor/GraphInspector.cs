@@ -1,7 +1,9 @@
 using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 using UnityEditor;
 using NodeCanvas;
+using NodeCanvas.Variables;
+using System.Linq;
 
 namespace NodeCanvasEditor{
 
@@ -14,7 +16,8 @@ namespace NodeCanvasEditor{
 
 
         void OnEnable(){
-            graph.nodesRoot.gameObject.hideFlags = Graph.doHide? HideFlags.HideInHierarchy : 0;
+            if (graph)
+                graph.nodesRoot.gameObject.hideFlags = Graph.doHide? HideFlags.HideInHierarchy : 0;
         }
 
         //hack
@@ -28,27 +31,16 @@ namespace NodeCanvasEditor{
 
         public override void OnInspectorGUI(){
 
+            GUI.skin.label.richText = true;
             Undo.RecordObject(graph, "Graph Inspector");
-
-            if (IsPrefab())
-                return;
-            
             ShowBasicGUI();
             ShowTargetsGUI();
+            graph.ShowDefinedBBVariablesGUI();
+            //ShowUsedByGUI();
 
             if (GUI.changed)
                 EditorUtility.SetDirty(graph);
         }
-
-        //for use in derived inspectors
-    	bool IsPrefab(){
-
-            bool isPrefab= (PrefabUtility.GetPrefabType(graph) == PrefabType.Prefab);
-            if (isPrefab)
-                EditorGUILayout.HelpBox("Editing is not allowed when prefab asset is selected. Please place the prefab in a scene, edit and apply it", MessageType.Info);
-            return isPrefab;
-        }
-
 
         void ShowBasicGUI(){
 
@@ -56,28 +48,52 @@ namespace NodeCanvasEditor{
                 EditorUtils.CoolLabel("Now Running!");
 
             GUILayout.Space(10);
-            graph.graphName = EditorGUILayout.TextField("Graph Name", graph.graphName);
-            if (string.IsNullOrEmpty(graph.graphName))
-              graph.graphName = graph.gameObject.name;
+            graph.name = EditorGUILayout.TextField("Graph Name", graph.name);
+            if (string.IsNullOrEmpty(graph.name))
+              graph.name = graph.gameObject.name;
             graph.graphComments = GUILayout.TextArea(graph.graphComments, GUILayout.Height(45));
             EditorUtils.TextFieldComment(graph.graphComments);
 
-            GUI.backgroundColor = new Color(0.8f,0.8f,1);
-            if (GUILayout.Button("EDIT IN NODECANVAS"))
-                GraphEditor.OpenWindow(graph);
-            GUI.backgroundColor = Color.white;
-            EditorUtils.BoldSeparator();
+            if (PrefabUtility.GetPrefabType(graph) != PrefabType.Prefab){
+                GUI.backgroundColor = new Color(0.8f,0.8f,1);
+                if (GUILayout.Button("EDIT IN NODECANVAS"))
+                    GraphEditor.OpenWindow(graph);
+                GUI.backgroundColor = Color.white;
+            } else {
+                EditorGUILayout.HelpBox("Editing is not allowed when prefab asset is selected. Please place the prefab in a scene, edit and apply it", MessageType.Info);
+            }
         }
 
         void ShowTargetsGUI(){
 
+            EditorUtils.BoldSeparator();
+
             GUI.color = new Color(1f,1f,1f,0.2f);
-            GUILayout.Label("Current Owner References (Dont edit unless you know why):");
-            //EditorGUILayout.LabelField("Agent", graph.agent? graph.agent.name : "NONE");
-            //EditorGUILayout.LabelField("Blackboard", graph.blackboard? graph.blackboard.name : "NONE");
-            graph.agent = EditorGUILayout.ObjectField("Agent", graph.agent, typeof(Component), true) as Component;
-            graph.blackboard = EditorGUILayout.ObjectField("Blackboard", graph.blackboard, typeof(Blackboard), true) as Blackboard;
+            GUILayout.Label("Current Owner References (These are automaticaly set):");
+            graph.agent = (Component)EditorGUILayout.ObjectField("Agent", graph.agent, typeof(Component), true);
+            graph.blackboard = (Blackboard)EditorGUILayout.ObjectField("Blackboard", graph.blackboard, typeof(Blackboard), true);
             GUI.color = Color.white;
+        }
+
+
+        void ShowUsedByGUI(){
+
+            EditorUtils.BoldSeparator();
+            EditorUtils.CoolLabel("Used By (in scene)");
+            EditorUtils.Separator();
+
+            var owners = Resources.FindObjectsOfTypeAll<GraphOwner>();
+            var nestedNodes = Resources.FindObjectsOfTypeAll<Node>();
+
+            foreach (GraphOwner owner in owners){
+                if (owner.behaviour == graph)
+                    GUILayout.Label(string.Format("{0} ({1})", owner.name, owner.GetType().Name));
+            }
+
+            foreach (INestedNode nested in nestedNodes.OfType<INestedNode>()){
+                if (nested.nestedGraph == graph)
+                    GUILayout.Label(string.Format("{0} ({1})", (nested as Node).graph.name, (nested as Node).graph.GetType().Name ));
+            }
         }
     }
 }

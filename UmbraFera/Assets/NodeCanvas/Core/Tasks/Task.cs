@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 using UnityEditor;
 #endif
 
@@ -7,16 +7,40 @@ using System;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
-using NodeCanvas.Variables;
 using System.Reflection;
+using NodeCanvas.Variables;
 
 namespace NodeCanvas{
 
 	///The base class for all Actions and Conditions. You dont actually use or derive this class. Instead derive from ActionTask and ConditionTask
 	abstract public class Task : MonoBehaviour{
 
-		[Serializable]
+
+		///Designates what type of component to get and set the agent from the agent itself on initialization.
+		///That component type is also considered required for correct task init.
+		[AttributeUsage(AttributeTargets.Class)]
+		protected class AgentTypeAttribute : Attribute{
+			public Type type;
+			public AgentTypeAttribute(Type type){
+				this.type = type;
+			}
+		}
+
+		///Designates that the task requires Unity messages to be forwarded from the agent and to this task
+		[AttributeUsage(AttributeTargets.Class)]
+		protected class EventListenerAttribute : Attribute{
+			public string[] messages;
+			public EventListenerAttribute(params string[] args){
+				this.messages = args;
+			}
+		}
+
+		///If the field is deriving Component then it will be retrieved from the agent. The field is also considered Required for correct initialization
+		[AttributeUsage(AttributeTargets.Field)]
+		protected class GetFromAgentAttribute : Attribute{}
+
 		///A special BBVariable for the task agent
+		[Serializable]
 		class TaskAgent : BBVariable{
 
 			[SerializeField]
@@ -32,16 +56,31 @@ namespace NodeCanvas{
 			[SerializeField]
 			private Component _value;
 			public Component value{
-				get {return useBlackboard? (Read<GameObject>()? Read<GameObject>().transform : null) : _value ;}
+				get
+				{
+					if (useBlackboard){
+						var o = Read<UnityEngine.Object>();
+						if (o != null){
+							if (o is GameObject)
+								return (o as GameObject).transform;
+							if (o is Component)
+								return (Component)o;
+						}
+						return null;
+					}
+					return _value;
+				}
 				set {_value = value;}
 			}
+
 			public override Type varType{
-				get {return typeof(GameObject);}
+				get {return typeof(UnityEngine.Object);}
 			}
+
 			public override string ToString(){
 				if (!isOverride) return "<b>owner</b>";
 				if (useBlackboard) return base.ToString();
-				return "<b>" + (_value != null? _value.name : "NULL") + "</b>";
+				return string.Format("<b>{0}</b>", _value != null? _value.name : "NULL");
 			}
 		}
 
@@ -55,7 +94,7 @@ namespace NodeCanvas{
 		private Blackboard _blackboard;
 		
 		//store to avoid spamming
-		private System.Type _agentType;
+		private Type _agentType;
 		private string _taskName;
 		private string _taskDescription;
 		//
@@ -76,42 +115,45 @@ namespace NodeCanvas{
 			get {return _ownerSystem as ITaskSystem;}
 		}
 
-		//The owner system's assigned agent
+		///The owner system's assigned agent
 		private Component ownerAgent{
 			get	{return ownerSystem != null? ownerSystem.agent : null;}
 		}
 
-		//The owner system's assigned blackboard
+		///The owner system's assigned blackboard
 		private Blackboard ownerBlackboard{
 			get	{return ownerSystem != null? ownerSystem.blackboard : null;}
 		}
+
+		///The time in seconds that the owner system is running
+		protected float ownerElapsedTime{
+			get {return ownerSystem != null? ownerSystem.elapsedTime : 0;}
+		}
 		///
 
-		new public string name{
-			get {return taskName;}
-		}
-
+		///Is the Task active?
 		public bool isActive{
 			get {return _isActive;}
 			set {_isActive = value;}
 		}
 
-		///The friendly task name
-		public string taskName{
+		///The friendly task name. This can be overriden with the [Name] attribute
+		new public string name{
 			get
 			{
 				if (string.IsNullOrEmpty(_taskName)){
 					var nameAtt = this.GetType().NCGetAttribute(typeof(NameAttribute), false) as NameAttribute;
 					_taskName = nameAtt != null? nameAtt.name : GetType().Name;
 					#if UNITY_EDITOR
-					_taskName = EditorUtils.CamelCaseToWords(_taskName);
+					_taskName = EditorUtils.SplitCamelCase(_taskName);
 					#endif
 				}
 				return _taskName;
 			}
 		}
 
-		public string taskDescription{
+		///The help description of the task if it has any through [Description] attribute
+		public string description{
 			get
 			{
 				if (_taskDescription == null ){
@@ -122,22 +164,22 @@ namespace NodeCanvas{
 			}
 		}
 
-		///The type that the agent will be set to by getting component from itself when the task initialize only
-		///You can omit this to keep the agent passed as is or if there is no need for specific type
-		public System.Type agentType{
+		///The type that the agent will be set to by getting component from itself on task initialize. Defined with [AgentType] attribute.
+		///You can omit this to keep the agent propagated as is or if there is no need for a specific type.
+		virtual public Type agentType{
 			get
 			{
 				if (_agentType == null){
 					var typeAtt = this.GetType().NCGetAttribute(typeof(AgentTypeAttribute), true) as AgentTypeAttribute;
-					_agentType = (typeAtt != null && typeof(Component).NCIsAssignableFrom(typeAtt.type))? typeAtt.type : typeof(Component);
+					_agentType = typeAtt != null && (typeof(Component).NCIsAssignableFrom(typeAtt.type) || typeAtt.type.NCIsInterface() )? typeAtt.type : null;
 				}
 				return _agentType;
 			}
 		}
 
-		///A short summary of what the task will finaly do. Derived tasks may override this.
-		virtual public string taskInfo{
-			get {return taskName;}
+		///A short summary of what the task will finaly do
+		virtual public string summaryInfo{
+			get {return name;}
 		}
 
 		///Helper summary info to display final agent string within task info if needed
@@ -163,7 +205,7 @@ namespace NodeCanvas{
 			get { return taskAgent.current? taskAgent.current : (agentIsOverride? taskAgent.value : ownerAgent); }
 		}
 
-		///The current or last blackboard of this task
+		///The current or last blackboard to be used by this task
 		protected Blackboard blackboard{
 			get
 			{
@@ -176,10 +218,10 @@ namespace NodeCanvas{
 			}
 			private set
 			{
-				if (_blackboard != value)
-					UpdateBBFields(value);
-
-				_blackboard = value;
+				if (_blackboard != value){
+					_blackboard = value;
+					UpdateBBFields(_blackboard);
+				}
 			}
 		}
 
@@ -232,8 +274,8 @@ namespace NodeCanvas{
 		}
 
 		//helper function
-		Component TransformAgent(Component newAgent, System.Type type){
-			return (type != typeof(Component) && newAgent != null)? newAgent.GetComponent(type) : newAgent;
+		Component TransformAgent(Component newAgent, Type newType){
+			return (newType != null && newType != typeof(Component) && newAgent != null)? newAgent.GetComponent(newType) : newAgent;
 		}
 
 		//Initialize whenever agent is set to a new value. Essentially usage of the attributes
@@ -242,7 +284,7 @@ namespace NodeCanvas{
 			taskAgent.current = newAgent;
 
 			if (newAgent == null){
-				Debug.LogError("<b>Task Init:</b> Failed to change Agent to type '" + agentType + "', for Task '" + taskName + "' or new Agent is NULL. Does the Agent has that Component?", this);
+				Debug.LogError("<b>Task Init:</b> Failed to change Agent to type '" + agentType + "', for Task '" + name + "' or new Agent is NULL. Does the Agent has that Component?", this);
 				return false;			
 			}
 
@@ -251,24 +293,24 @@ namespace NodeCanvas{
 
 			//Usage of [RequiredField] and [GetFromAgent] attributes
 			foreach (FieldInfo field in this.GetType().NCGetFields()){
-
-				var value = field.GetValue(this);
 				
+				var value = field.GetValue(this);
+
 				var requiredAttribute = field.GetCustomAttributes(typeof(RequiredFieldAttribute), true).FirstOrDefault() as RequiredFieldAttribute;
 				if (requiredAttribute != null){
 
 					if (value == null || value.Equals(null)){
-						Debug.LogError("<b>Task Init:</b> A required field for Task '" + taskName + "', is not set! Field: '" + field.Name + "' ", this);
+						Debug.LogError("<b>Task Init:</b> A required field for Task '" + name + "', is not set! Field: '" + field.Name + "' ", this);
 						return false;
 					}
 
 					if (field.FieldType == typeof(string) && string.IsNullOrEmpty((string)value) ){
-						Debug.LogError("<b>Task Init:</b> A required string for Task '" + taskName + "', is not set! Field: '" + field.Name + "' ", this);
+						Debug.LogError("<b>Task Init:</b> A required string for Task '" + name + "', is not set! Field: '" + field.Name + "' ", this);
 						return false;
 					}
 
 					if (typeof(BBVariable).NCIsAssignableFrom(field.FieldType) && (value as BBVariable).isNull ) {
-						Debug.LogError("<b>Task Init:</b> A required BBVariable value for Task '" + taskName + "', is not set! Field: '" + field.Name + "' ", this);
+						Debug.LogError("<b>Task Init:</b> A required BBVariable value for Task '" + name + "', is not set! Field: '" + field.Name + "' ", this);
 						return false;
 					}
 				}
@@ -286,7 +328,7 @@ namespace NodeCanvas{
 					
 					} else {
 
-						Debug.LogError("<b>Task Init:</b> You've set a GetFromAgent Attribute on a field (" + field.Name + ") whos type does not derive Component on Task '" + taskName + "'", this);
+						Debug.LogError("<b>Task Init:</b> You've set a GetFromAgent Attribute on a field (" + field.Name + ") whos type does not derive Component on Task '" + name + "'", this);
 						return false;
 					}
 				}
@@ -305,13 +347,13 @@ namespace NodeCanvas{
 			//let user make further adjustments and inform us if there was an error
 			string errorString = OnInit();
 			if (errorString != null){
-				Debug.LogError("<b>Task Init:</b> " + errorString + ". Task '" + taskName + "'");
+				Debug.LogError("<b>Task Init:</b> " + errorString + ". Task '" + name + "'");
 				return false;
 			}
 			return true;
 		}
 
-		//Usage of [EventListener]. This is done in awake and init
+		//Usage of [EventListener]. This is done in init
 		void SubscribeToEvents(Component newAgent){
 
 			var msgAttribute = this.GetType().NCGetAttribute(typeof(EventListenerAttribute), true) as EventListenerAttribute;
@@ -343,7 +385,7 @@ namespace NodeCanvas{
 		}
 
 		sealed public override string ToString(){
-			return string.Format("{0} ({1})", taskName, taskInfo);
+			return string.Format("{0} ({1})", name, summaryInfo);
 		}
 
 
@@ -401,23 +443,86 @@ namespace NodeCanvas{
 			InitBBFields();
 			OnEditorValidate();
 			if (isObsolete != null)
-				Debug.LogWarning(string.Format("You are using an obsolete Task '{0}': <b>'{1}'</b>", taskName, isObsolete.Message));
+				Debug.LogWarning(string.Format("You are using an obsolete Task '{0}': <b>'{1}'</b>", name, isObsolete.Message));
 		}
 
 		virtual protected void OnEditorReset(){}
 		virtual protected void OnEditorValidate(){}
 
-		virtual public void ShowInspectorGUI(){
+		public void ShowInspectorGUI(bool showTitlebar = true){
 
-			if (Application.isPlaying && agentIsOverride && taskAgent.value == null){
-				GUI.color = EditorUtils.lightRed;
-				EditorGUILayout.LabelField("Missing Agent Reference!");
-				GUI.color = Color.white;
-				return;
+			Undo.RecordObject(this, "Task Inspector");
+			if (!showTitlebar || ShowTaskTitlebar()){
+
+				if (!string.IsNullOrEmpty(description) )
+					EditorGUILayout.HelpBox(description, MessageType.None);
+
+				SealedInspectorGUI();
+				ShowAgentField();
+
+				OnTaskInspectorGUI();
 			}
 
-			if (agentType != typeof(Component) && typeof(Component).IsAssignableFrom(agentType))
-				AgentField();
+			if (GUI.changed && this != null)
+				EditorUtility.SetDirty(this);
+		}
+
+		virtual protected void SealedInspectorGUI(){}
+
+		///Editor: Optional override to show custom controls whenever the ShowInspectorGUI is called. By default controls will automaticaly show for most types
+		virtual protected void OnTaskInspectorGUI(){
+			DrawDefaultInspector();
+		}
+
+		///Draw an auto editor inspector for this task.
+		protected void DrawDefaultInspector(){
+			EditorUtils.ShowAutoEditorGUI(this);
+		}
+
+
+		//a Custom titlebar for tasks
+		bool ShowTaskTitlebar(){
+
+			//this.hideFlags = HideFlags.HideInInspector;
+			this.hideFlags = 0;
+			
+			GUI.backgroundColor = new Color(1,1,1,0.8f);
+			GUILayout.BeginHorizontal("box");
+			GUI.backgroundColor = Color.white;
+
+			if (GUILayout.Button("X", GUILayout.Width(20))){
+				Undo.DestroyObjectImmediate(this);
+				return false;
+			}
+
+			GUILayout.Label("<b>" + (this.unfolded? "▼ " :"► ") + this.name + "</b>" + (this.unfolded? "" : "\n<i><size=10>(" + this.summaryInfo + ")</size></i>") );
+
+			if (GUILayout.Button(EditorUtils.csIcon, "label", GUILayout.Width(20), GUILayout.Height(20)))
+				AssetDatabase.OpenAsset(MonoScript.FromMonoBehaviour(this));
+
+			GUILayout.EndHorizontal();
+			var titleRect = GUILayoutUtility.GetLastRect();
+			EditorGUIUtility.AddCursorRect(titleRect, MouseCursor.Link);
+
+			var e = Event.current;
+
+			if (e.type == EventType.ContextClick && titleRect.Contains(e.mousePosition)){
+				var menu = new GenericMenu();
+				menu.AddItem(new GUIContent("Open Script"), false, delegate{AssetDatabase.OpenAsset(MonoScript.FromMonoBehaviour(this)) ;} );
+				menu.AddItem(new GUIContent("Copy"), false, delegate{Task.copiedTask = this;} );
+				menu.AddItem(new GUIContent("Delete"), false, delegate{Undo.DestroyObjectImmediate(this);} );
+				menu.ShowAsContext();
+				e.Use();
+			}
+
+			if (e.button == 0 && e.type == EventType.MouseDown && titleRect.Contains(e.mousePosition))
+				e.Use();
+
+			if (e.button == 0 && e.type == EventType.MouseUp && titleRect.Contains(e.mousePosition)){
+				this.unfolded = !this.unfolded;
+				e.Use();
+			}
+			return this.unfolded;
 		}
 
 		virtual public Task CopyTo(GameObject go){
@@ -431,14 +536,18 @@ namespace NodeCanvas{
 			return newTask;
 		}
 
-		///Draw an auto editor inspector for this task.
-		protected void DrawDefaultInspector(){
-			
-			EditorUtils.ShowAutoEditorGUI(this);
-		}
-
 		//Shows the agent field
-		void AgentField(){
+		void ShowAgentField(){
+
+			if (agentType == null)
+				return;
+
+			if (Application.isPlaying && agentIsOverride && taskAgent.value == null){
+				GUI.color = EditorUtils.lightRed;
+				EditorGUILayout.LabelField("Missing Agent Reference!");
+				GUI.color = Color.white;
+				return;
+			}
 
 			Undo.RecordObject(this, "Agent Field Change");
 
@@ -449,16 +558,21 @@ namespace NodeCanvas{
 			GUI.backgroundColor = GUI.color;
 			GUILayout.BeginVertical("box");
 			GUILayout.BeginHorizontal();
+			
 			if (!taskAgent.useBlackboard){
 
 				if (agentIsOverride){
 					taskAgent.value = EditorGUILayout.ObjectField(taskAgent.value, agentType, true) as Component;
+					//if (taskAgent.value != null && !agentType.IsAssignableFrom(taskAgent.value.GetType()))
+					//	taskAgent.value = taskAgent.value.GetComponent(agentType);
+
 				} else {
+
 					GUILayout.BeginHorizontal();
-					var compIcon = EditorGUIUtility.FindTexture(EditorUtils.TypeName(agentType) + " Icon");
+					var compIcon = EditorGUIUtility.ObjectContent(null, agentType).image;
 					if (compIcon != null)
 						GUILayout.Label(compIcon, GUILayout.Width(16), GUILayout.Height(16));
-					GUILayout.Label("Owner Agent (" + infoString + ")");
+					GUILayout.Label("Use Owner (" + infoString + ")");
 					GUILayout.EndHorizontal();
 				}
 
@@ -468,14 +582,18 @@ namespace NodeCanvas{
 				if (taskAgent.bb){
 
 					var dataNames = taskAgent.bb.GetDataNames(typeof(GameObject)).ToList();
+					dataNames.AddRange( taskAgent.bb.GetDataNames(agentType));
+
 					if (dataNames.Contains(taskAgent.dataName) || string.IsNullOrEmpty(taskAgent.dataName) ){
 						taskAgent.dataName = EditorUtils.StringPopup(taskAgent.dataName, dataNames, false, true);
 					} else {
-						taskAgent.dataName = EditorGUILayout.TextField("Override", taskAgent.dataName);
+						taskAgent.dataName = EditorGUILayout.TextField(taskAgent.dataName);
 					}
 
 				} else {
-					taskAgent.dataName = EditorGUILayout.TextField("Override", taskAgent.dataName);
+
+					taskAgent.dataName = EditorGUILayout.TextField(taskAgent.dataName);
+
 				}
 			}
 
@@ -500,35 +618,5 @@ namespace NodeCanvas{
 		}
 
 		#endif
-
-
-		///Designates what type of component to get and set the agent from the agent itself on initialization.
-		///That component type is also considered required for correct task init.
-		[AttributeUsage(AttributeTargets.Class)]
-		protected class AgentTypeAttribute : Attribute{
-
-			public System.Type type;
-
-			public AgentTypeAttribute(System.Type type){
-				this.type = type;
-			}
-		}
-
-		///If the field is deriving Component then it will be retrieved from the agent. The field is also considered Required for correct initialization
-		[AttributeUsage(AttributeTargets.Field)]
-		protected class GetFromAgentAttribute : Attribute{
-
-		}
-
-		///Designates that the task requires Unity messages to be forwarded from the agent and to this task
-		[AttributeUsage(AttributeTargets.Class)]
-		protected class EventListenerAttribute : Attribute{
-
-			public string[] messages;
-
-			public EventListenerAttribute(params string[] args){
-				this.messages = args;
-			}
-		}
 	}
 }

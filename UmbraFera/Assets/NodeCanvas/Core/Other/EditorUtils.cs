@@ -7,10 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
-using System.IO;
-using System.Text.RegularExpressions;
 using NodeCanvas.Variables;
 
 namespace NodeCanvas{
@@ -29,18 +26,19 @@ namespace NodeCanvas{
 				return _tex;
 			}
 		}
+		
+		readonly public static Texture2D playIcon   = EditorGUIUtility.FindTexture("d_PlayButton");
+		readonly public static Texture2D pauseIcon  = EditorGUIUtility.FindTexture("d_PauseButton");
+		readonly public static Texture2D stepIcon   = EditorGUIUtility.FindTexture("d_StepButton");
+		readonly public static Texture2D viewIcon   = EditorGUIUtility.FindTexture("d_ViewToolOrbit On");
+		readonly public static Texture2D csIcon     = EditorGUIUtility.FindTexture("cs Script Icon");
+		readonly public static Texture2D jsIcon     = EditorGUIUtility.FindTexture("Js Script Icon");
+		readonly public static Texture2D tagIcon    = EditorGUIUtility.FindTexture("d_FilterByLabel");
+		readonly public static Texture2D searchIcon = EditorGUIUtility.FindTexture("Search Icon");
 
-		public static Texture2D playIcon  = EditorGUIUtility.FindTexture("d_PlayButton");
-		public static Texture2D pauseIcon = EditorGUIUtility.FindTexture("d_PauseButton");
-		public static Texture2D stepIcon  = EditorGUIUtility.FindTexture("d_StepButton");
-		public static Texture2D viewIcon  = EditorGUIUtility.FindTexture("d_ViewToolOrbit On");
-		public static Texture2D csIcon    = EditorGUIUtility.FindTexture("cs Script Icon");
-		public static Texture2D jsIcon    = EditorGUIUtility.FindTexture("Js Script Icon");
-		public static Texture2D tagIcon   = EditorGUIUtility.FindTexture("d_FilterByLabel");
-
-		public static Color lightOrange = new Color(1, 0.9f, 0.4f);
-		public static Color lightBlue   = new Color(0.8f,0.8f,1);
-		public static Color lightRed    = new Color(1,0.5f,0.5f, 0.8f);
+		readonly public static Color lightOrange = new Color(1, 0.9f, 0.4f);
+		readonly public static Color lightBlue   = new Color(0.8f,0.8f,1);
+		readonly public static Color lightRed    = new Color(1,0.5f,0.5f, 0.8f);
 
 		//a cool label :-P
 		public static void CoolLabel(string text){
@@ -63,7 +61,7 @@ namespace NodeCanvas{
 		//A thick separator similar to ngui. Thanks
 		public static void BoldSeparator(){
 
-			Rect lastRect= GUILayoutUtility.GetLastRect();
+			var lastRect= GUILayoutUtility.GetLastRect();
 
 			GUILayout.Space(14);
 			GUI.color = new Color(0, 0, 0, 0.25f);
@@ -73,19 +71,11 @@ namespace NodeCanvas{
 			GUI.color = Color.white;
 		}
 
+		//Combines the rest functions for a header style label
 		public static void TitledSeparator(string title){
 
-			TitledSeparator(title, false);
-		}
-
-		//Combines the rest functions for a header style label
-		public static void TitledSeparator(string title, bool startOfInspector){
-
-			if (!startOfInspector)
-				BoldSeparator();
-			else
-				EditorGUILayout.Space();
-
+			GUILayout.Space(1);
+			BoldSeparator();
 			CoolLabel(title + " ▼");
 			Separator();
 		}
@@ -93,7 +83,7 @@ namespace NodeCanvas{
 		//Just a fancy ending for inspectors
 		public static void EndOfInspector(){
 
-			Rect lastRect= GUILayoutUtility.GetLastRect();
+			var lastRect= GUILayoutUtility.GetLastRect();
 
 			GUILayout.Space(8);
 			GUI.color = new Color(0, 0, 0, 0.4f);
@@ -112,56 +102,6 @@ namespace NodeCanvas{
 			}
 		}
 
-		//a Custom titlebar for tasks
-		public static Rect TaskTitlebar(Task task, bool doHide = false){
-
-			task.hideFlags = doHide? HideFlags.HideInInspector : 0;
-			
-			GUI.backgroundColor = new Color(1,1,1,0.8f);
-			GUILayout.BeginHorizontal("box");
-			if (GUILayout.Button("X", GUILayout.Width(20))){
-				Undo.DestroyObjectImmediate(task);
-				return new Rect();
-			}
-
-			GUILayout.Label("<b>" + (task.unfolded? "▼ " :"► ") + task.taskName + "</b>" + (task.unfolded? "" : "\n<i><size=10>(" + task.taskInfo + ")</size></i>") );
-
-			if (GUILayout.Button(csIcon, "label", GUILayout.Width(20), GUILayout.Height(20)))
-				AssetDatabase.OpenAsset(MonoScript.FromMonoBehaviour(task));
-
-			GUILayout.EndHorizontal();
-			var titleRect = GUILayoutUtility.GetLastRect();
-			EditorGUIUtility.AddCursorRect(titleRect, MouseCursor.Link);
-
-			if (!string.IsNullOrEmpty(task.taskDescription) )
-				EditorGUILayout.HelpBox(task.taskDescription, MessageType.None);
-
-			var e = Event.current;
-
-			if (e.type == EventType.ContextClick && titleRect.Contains(e.mousePosition)){
-				var menu = new GenericMenu();
-				menu.AddItem(new GUIContent("Open Script"), false, delegate{AssetDatabase.OpenAsset(MonoScript.FromMonoBehaviour(task)) ;} );
-				menu.AddItem(new GUIContent("Copy"), false, delegate{Task.copiedTask = task;} );
-				menu.AddItem(new GUIContent("Delete"), false, delegate{Undo.DestroyObjectImmediate(task);} );
-				menu.ShowAsContext();
-				e.Use();
-			}
-
-			if (e.button == 0 && e.type == EventType.MouseDown && titleRect.Contains(e.mousePosition))
-				e.Use();
-
-			if (e.button == 0 && e.type == EventType.MouseUp && titleRect.Contains(e.mousePosition)){
-				task.unfolded = !task.unfolded;
-				e.Use();
-			}
-
-			if (task.unfolded)
-				task.ShowInspectorGUI();
-				
-			return titleRect;
-		}
-
-
 		//Show an automatic editor gui for arbitrary objects, taking into account custom attributes
 		public static void ShowAutoEditorGUI(object o){
 
@@ -170,15 +110,8 @@ namespace NodeCanvas{
 				if (field.GetCustomAttributes(typeof(HideInInspector), true ).FirstOrDefault() as HideInInspector != null)
 					continue;
 
-				if (field.GetCustomAttributes(typeof(BeginGroupAttribute), true ).FirstOrDefault() as BeginGroupAttribute != null)
-					GUILayout.BeginVertical("box");
-
 				field.SetValue(o, GenericField(field.Name, field.GetValue(o), field.FieldType, field) );
 				GUI.backgroundColor = Color.white;
-
-				if (field.GetCustomAttributes(typeof(EndGroupAttribute), true ).FirstOrDefault() as EndGroupAttribute != null)
-					GUILayout.EndVertical();
-
 			}
 
 			foreach (PropertyInfo prop in o.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)){
@@ -195,29 +128,38 @@ namespace NodeCanvas{
 		}
 
 		//For generic automatic editors. Passing a MemberInfo will also check for custom attributes
-		public static object GenericField(string name, object value, System.Type t, MemberInfo member = null){
+		public static object GenericField(string name, object value, Type t, MemberInfo member = null){
 
 			if (t == null){
 				GUILayout.Label("NO TYPE PROVIDED!");
 				return null;
 			}
 
-			if (value == null && t != null && t.GetConstructor(Type.EmptyTypes) != null && (typeof(UnityEngine.Object)).IsAssignableFrom(t) == false)
+			name = SplitCamelCase(name);
+
+
+			if ( !typeof(UnityEngine.Object).IsAssignableFrom(t) && (value != null && value.GetType().IsAbstract) || (value == null && t.IsAbstract) ){
+				GUILayout.Label(name + " (Abstract)");
+				return value;
+			}
+
+			if (!(typeof(UnityEngine.Object)).IsAssignableFrom(t) && value == null && t != null && !t.IsAbstract && t.GetConstructor(Type.EmptyTypes) != null)
 				value = Activator.CreateInstance(t);
 
-			name = CamelCaseToWords(name);
-
-			if (member != null && member.GetCustomAttributes(typeof(RequiredFieldAttribute), true).FirstOrDefault() as RequiredFieldAttribute != null){
-				if ( (value == null || value.Equals(null) ) || 
-					(t == typeof(string) && string.IsNullOrEmpty((string)value) ) ||
-					(typeof(BBVariable).IsAssignableFrom(t) && (value as BBVariable).isNull) )
-				{
-					GUI.backgroundColor = lightRed;
+			if (member != null){
+				if (member.GetCustomAttributes(typeof(RequiredFieldAttribute), true).FirstOrDefault() as RequiredFieldAttribute != null){
+					if ( (value == null || value.Equals(null) ) || 
+						(t == typeof(string) && string.IsNullOrEmpty((string)value) ) ||
+						(typeof(BBVariable).IsAssignableFrom(t) && (value as BBVariable).isNull) )
+					{
+						GUI.backgroundColor = lightRed;
+					}
 				}
 			}
 
+
 			if (t == typeof(string)){
-				
+
 				if (member != null){
 					if (member.GetCustomAttributes(typeof(TagFieldAttribute), true).FirstOrDefault() as TagFieldAttribute != null)
 						return EditorGUILayout.TagField(name, (string)value);
@@ -290,12 +232,11 @@ namespace NodeCanvas{
 				return EditorGUILayout.EnumPopup(name, (System.Enum)value);
 			}
 
-			if (typeof(BBVariable).IsAssignableFrom(t)){
+			if (typeof(BBVariable).IsAssignableFrom(t))
 				return BBVariableField(name, (BBVariable)value, member);
-			}
 
 			if (t == typeof(Component) && value as Component != null)
-				return ComponentField(name, (Component)value);
+				return ComponentField(name, (Component)value, typeof(Component));
 
 			if (typeof(UnityEngine.Object).IsAssignableFrom(t))
 				return EditorGUILayout.ObjectField(name, (UnityEngine.Object)value, t, true);
@@ -372,12 +313,12 @@ namespace NodeCanvas{
 		}
 
 		//Convert camelCase to words as the name implies.
-		public static string CamelCaseToWords(string s){
+		public static string SplitCamelCase(string s){
 
-			if (string.IsNullOrEmpty(s))
-				return s;
-			s = s.Substring(0, 1).ToUpper() + s.Substring(1);
-			return Regex.Replace(s, @"(\B[A-Z])", @" $1");
+			if (string.IsNullOrEmpty(s)) return s;
+
+			s = char.ToUpper(s[0]) + s.Substring(1);
+			return System.Text.RegularExpressions.Regex.Replace(s, "(?<=[a-z])([A-Z])", " $1").Trim();
 		}
 
 		//a special object field for the BBVariable class to let user choose either a real value or enter a string to read data from a Blackboard
@@ -408,6 +349,7 @@ namespace NodeCanvas{
 						if (pair.Value == bbVar.bb || !pair.Value.isGlobal)
 							continue;
 
+						dataNames.Add(pair.Key + "/");
 						foreach (string dName in pair.Value.GetDataNames(bbVar.varType))
 							dataNames.Add(pair.Key + "/" + dName);
 					}
@@ -505,7 +447,7 @@ namespace NodeCanvas{
 
 				GUILayout.BeginVertical();
 				GUICallback(i);
-				GUILayout.EndHorizontal();
+				GUILayout.EndVertical();
 
 				GUI.color = Color.white;
 				GUI.backgroundColor = Color.white;
@@ -528,6 +470,9 @@ namespace NodeCanvas{
 							Undo.RecordObject(undoObject, "Reorder");
 						list.Remove(picked);
 						list.Insert(i, picked);
+						pickedObjectList[list] = null;
+						e.Use();
+						return;
 					}
 				}
 
@@ -540,31 +485,9 @@ namespace NodeCanvas{
 				pickedObjectList[list] = null;
 		}
 
-		public static bool BooleanField(string prefix, bool value){
-
-			GUILayout.BeginHorizontal();
-			EditorGUILayout.PrefixLabel(prefix);
-			if (GUILayout.Button(value? "True" : "False", GUILayout.Height(15)))
-				value = !value;
-			GUILayout.EndHorizontal();
-			return value;
-		}
-
-		public static Component ComponentField(Component comp){
-			return ComponentField(string.Empty, comp, typeof(Component));
-		}
-
-		public static Component ComponentField(Component comp, System.Type type){
-			return ComponentField(string.Empty, comp, type);
-		}
-
-		public static Component ComponentField(string prefix, Component comp){
-			return ComponentField(prefix, comp, typeof(Component));
-		}
-
-		//an editor field where if the component is null simply shows an object field, but if its not, shows a dropdown popup to select the specific component
+		//An editor field where if the component is null simply shows an object field, but if its not, shows a dropdown popup to select the specific component
 		//from within the gameobject
-		public static Component ComponentField(string prefix, Component comp, System.Type type, bool allowNone = true){
+		public static Component ComponentField(string prefix, Component comp, Type type, bool allowNone = true){
 
 			if (!comp){
 
@@ -580,8 +503,8 @@ namespace NodeCanvas{
 				return comp;
 			}
 
-			List<Component> allComp = new List<Component>(comp.GetComponents(type));
-			List<string> compNames = new List<string>();
+			var allComp = new List<Component>(comp.GetComponents(type));
+			var compNames = new List<string>();
 
 			foreach (Component c in allComp.ToArray()){
 				
@@ -593,7 +516,7 @@ namespace NodeCanvas{
 					continue;
 				}
 
-				compNames.Add(TypeName(c.GetType()) + " @ " + c.gameObject.name);
+				compNames.Add(TypeName(c.GetType()) + " (" + c.gameObject.name + ")");
 			}
 
 			if (allowNone)
@@ -616,7 +539,7 @@ namespace NodeCanvas{
 			return StringPopup(string.Empty, selected, options, showWarning, allowNone, GUIOptions);
 		}
 
-		//a popup that it's based on the string rather than the index
+		//a popup that is based on the string rather than the index
 		public static string StringPopup(string prefix, string selected, List<string> options, bool showWarning = true, bool allowNone = false, params GUILayoutOption[] GUIOptions){
 
 			EditorGUILayout.BeginVertical();
@@ -654,66 +577,123 @@ namespace NodeCanvas{
 			return index == -1? string.Empty : options[index];
 		}
 
+		///Generic Popup for selection of any element within a list
+		public static T Popup<T>(string prefix, T selected, List<T> options, params GUILayoutOption[] GUIOptions){
+
+			EditorGUILayout.BeginVertical();
+			int index;
+
+			if (options.Contains(selected))	index = options.IndexOf(selected);
+			else index = -1;
+
+			var stringedOptions = options.Select(e => e.ToString()).ToArray();
+
+			if (!string.IsNullOrEmpty(prefix)) index = EditorGUILayout.Popup(prefix, index, stringedOptions, GUIOptions);
+			else index = EditorGUILayout.Popup(index, stringedOptions, GUIOptions);
+
+			EditorGUILayout.EndVertical();
+			return index == -1? options[0] : options[index];
+		}
+
+		//A generic menu selection
+		public static void ShowMenu<T>(List<T> options, Action<T> callback){
+			
+			GenericMenu.MenuFunction2 Selected = delegate(object selection){
+				callback((T)selection);
+			};
+
+			var menu = new GenericMenu();
+			foreach (T element in options)
+				menu.AddItem(new GUIContent(element.ToString()), false, Selected, element );
+			menu.ShowAsContext();
+			Event.current.Use();
+		}
+
 
 		//Shows a button that when clicked, pops a context menu with a list of tasks deriving the base type specified. When something is selected the callback is called
+		//On top of that it also shows a search field for Tasks
+		static string lastSearch = string.Empty;
+		static List<ScriptInfo> searchResults = new List<ScriptInfo>();
 		public static void TaskSelectionButton(GameObject target, Type baseType, Action<Task> callback, bool hide = false){
 
-			GUILayout.BeginHorizontal();
+			Action<Type> ContextAction = delegate (Type script){
+
+				if (!target)
+					target = new GameObject(baseType.Name);
+
+				var newTask = target.AddComponent(script) as Task;
+				Undo.RegisterCreatedObjectUndo(newTask, "New Task");
+				Undo.RecordObject(newTask, "New Task");
+				newTask.hideFlags = hide? HideFlags.HideInInspector : 0;
+				
+				callback(newTask);
+			};
+
 			GUI.backgroundColor = lightBlue;
+			if (GUILayout.Button("Add " + SplitCamelCase(baseType.Name) )){
 
-			if (GUILayout.Button("Add " + CamelCaseToWords(baseType.Name) )){
-
-				Action<Type> ContextAction = delegate (Type script){
-
-					if (!target)
-						target = new GameObject(baseType.Name);
-
-					var newTask = target.AddComponent(script) as Task;
-					Undo.RegisterCreatedObjectUndo(newTask, "New Task");
-					Undo.RecordObject(newTask, "New Task");
-					newTask.hideFlags = hide? HideFlags.HideInInspector : 0;
-					
-					callback(newTask);
-				};
-
-				ShowTypeSelectionMenu(baseType, ContextAction);
-			}
-
-			if (Task.copiedTask != null && baseType.IsAssignableFrom(Task.copiedTask.GetType())){
-				if (GUILayout.Button("P", GUILayout.Width(20) ))
-					callback( Task.copiedTask.CopyTo(target) );
-			}
-
-			GUI.backgroundColor = Color.white;
-			GUILayout.EndHorizontal();
-		}
-
-		//shows a context menu with a list of components of specified type directly
-		public static void ShowTypeSelectionMenu(Type baseType, Action<Type> callback){
-
-				GenericMenu.MenuFunction2 Selected = delegate(object selectedType){
-					callback((Type)selectedType);
-				};
-
-				var scriptInfos = GetAllScriptsOfTypeCategorized(baseType);
-				var menu = new GenericMenu();
-
-				foreach (ScriptInfo script in scriptInfos){
-					if (string.IsNullOrEmpty(script.category))
-						menu.AddItem(new GUIContent(script.name), false, Selected, script.type);
-				}
-
-				menu.AddSeparator("/");
-
-				foreach (ScriptInfo script in scriptInfos){
-					if (!string.IsNullOrEmpty(script.category))
-						menu.AddItem(new GUIContent( script.category + "/" + script.name), false, Selected, script.type);
-				}
-
+				var menu = GetTypeSelectionMenu(baseType, ContextAction);
+				if (Task.copiedTask != null && baseType.IsAssignableFrom( Task.copiedTask.GetType()) )
+					menu.AddItem(new GUIContent(string.Format("Paste ({0})", Task.copiedTask.name) ), false, delegate { callback( Task.copiedTask.CopyTo(target) ); });
 				menu.ShowAsContext();
 				Event.current.Use();
+			}
+
+
+			GUI.backgroundColor = Color.white;
+
+			GUILayout.BeginHorizontal();
+			var search = EditorGUILayout.TextField(lastSearch, (GUIStyle)"ToolbarSeachTextField");
+			if (GUILayout.Button("", (GUIStyle)"ToolbarSeachCancelButton")){
+				search = string.Empty;
+				GUIUtility.keyboardControl = 0;
+			}
+			GUILayout.EndHorizontal();
+
+			if (!string.IsNullOrEmpty(search)){
+
+				if (search != lastSearch)
+					searchResults = GetAllScriptsOfTypeCategorized(baseType);
+
+				GUILayout.BeginVertical("TextField");
+				foreach (ScriptInfo taskInfo in searchResults){
+					if (taskInfo.name.ToLower().Contains(search.ToLower())){
+						if (GUILayout.Button(taskInfo.name)){
+							search = string.Empty;
+							GUIUtility.keyboardControl = 0;
+							ContextAction(taskInfo.type);
+						}
+					}
+				}
+				GUILayout.EndVertical();
+			}
+
+			lastSearch = search;
 		}
 
+		public static GenericMenu GetTypeSelectionMenu(Type baseType, Action<Type> callback, string subCategory = null){
+			GenericMenu.MenuFunction2 Selected = delegate(object selectedType){
+				callback((Type)selectedType);
+			};
+
+			var scriptInfos = GetAllScriptsOfTypeCategorized(baseType);
+			var menu = new GenericMenu();
+			subCategory = string.IsNullOrEmpty(subCategory)? "" : subCategory + "/";
+
+			foreach (ScriptInfo script in scriptInfos){
+				if (string.IsNullOrEmpty(script.category))
+					menu.AddItem(new GUIContent(subCategory + script.name), false, Selected, script.type);
+			}
+
+			menu.AddSeparator("/");
+
+			foreach (ScriptInfo script in scriptInfos){
+				if (!string.IsNullOrEmpty(script.category))
+					menu.AddItem(new GUIContent(subCategory + script.category + "/" + script.name), false, Selected, script.type);
+			}
+
+			return menu;
+		}
 
 		//Get all scripts of a type excluding: the base type, abstract classes, Obsolete classes and those with the DoNotList attribute, from within the project categorized as a list of ScriptInfo
 		public static List<ScriptInfo> GetAllScriptsOfTypeCategorized(Type baseType){
@@ -721,9 +701,12 @@ namespace NodeCanvas{
 			var allRequestedScripts = new List<ScriptInfo>();
 			var assetPaths = AssetDatabase.GetAllAssetPaths().Select(p => Strip(p, "/")).ToList();
 
-			foreach (System.Type subType in GetAssemblyTypes(baseType)){
+			foreach (Type subType in GetAssemblyTypes(baseType)){
 				
 				if (subType.GetCustomAttributes(typeof(DoNotListAttribute), false).FirstOrDefault() == null && subType.GetCustomAttributes(typeof(ObsoleteAttribute), false).FirstOrDefault() == null ){
+
+					if (subType.IsAbstract)
+						continue;
 
 					if (typeof(MonoBehaviour).IsAssignableFrom(subType)){
 						if (!assetPaths.Contains(subType.Name+".cs") && !assetPaths.Contains(subType.Name+".js") && !assetPaths.Contains(subType.Name+".boo")){
@@ -732,10 +715,7 @@ namespace NodeCanvas{
 						}
 					}
 
-					if (subType.IsAbstract)
-						continue;
-
-					var scriptName = CamelCaseToWords( TypeName(subType) );
+					var scriptName = SplitCamelCase( TypeName(subType) );
 					var scriptCategory = string.Empty;
 
 					var nameAttribute = subType.GetCustomAttributes(typeof(NameAttribute), false).FirstOrDefault() as NameAttribute;
@@ -756,20 +736,65 @@ namespace NodeCanvas{
 			return allRequestedScripts;
 		}
 
-		//Get all base derived types in the current loaded assemplies, excluding the base type itself
-		public static List<System.Type> GetAssemblyTypes(System.Type baseType){
+		//yeah this is very special but....
+		public static void ShowConfiguredTypeSelectionMenu(Type type, Action<Type> callback, bool showInterfaces = true){
+			GenericMenu.MenuFunction2 Selected = delegate(object t){
+				callback((Type)t);
+			};	
 			
-			var types = new List<System.Type>();
+			var menu = new UnityEditor.GenericMenu();
+			foreach (System.Type t in NCPrefs.GetCommonlyUsedTypes(typeof(object))){
+				if (type.IsAssignableFrom(t) || (t.IsInterface && showInterfaces) ){
+					var category = "Classes/";
+					if (t.IsInterface) category = "Interfaces/";
+					if (t.IsEnum) category = "Enumerations/";
+					var nsString = string.IsNullOrEmpty(t.Namespace)? "No Namespace/" : (t.Namespace.Replace(".","/") + "/") ;
+					menu.AddItem(new GUIContent(category + nsString + TypeName(t) ), false, Selected, t);
+				}
+			}
+
+			menu.AddDisabledItem(new GUIContent("Add more in Type Configurator"));
+			menu.ShowAsContext();
+			Event.current.Use();
+		}
+
+
+		//Get all base derived types in the current loaded assemplies, excluding the base type itself
+		public static List<Type> GetAssemblyTypes(Type baseType){
+			
+			var types = new List<Type>();
 			foreach (Assembly ass in System.AppDomain.CurrentDomain.GetAssemblies()){
-				foreach (System.Type t in ass.GetTypes()){
-					if (baseType.IsAssignableFrom(t) && baseType != t)
-						types.Add(t);
+
+				if (ass.GetName().Name.Contains("Editor"))
+					continue;
+					
+				try
+				{
+					foreach (Type t in ass.GetExportedTypes()){
+						if (t.IsSubclassOf(baseType))
+							types.Add(t);
+					}
+				}
+				catch
+				{
+					Debug.Log(ass.FullName + " will be excluded");
+					continue;
 				}
 			}
 			types = types.OrderBy(type => TypeName(type) ).ToList();
 			types = types.OrderBy(type => type.Namespace).ToList();
 			return types;
 		}
+
+		//Gets the first type found by providing just the name of the type. Rarely used (currently for upgrading ScriptControl tasks)
+		public static Type GetType(string name, Type fallback){
+			foreach (Type t in GetAssemblyTypes(typeof(object))){
+				if (t.Name == name)
+					return t;
+			}
+			return fallback;
+		}
+
 
 		//get the right friendly name for a type
 		public static string TypeName(Type t){
@@ -780,7 +805,7 @@ namespace NodeCanvas{
 			string s = t.Name;
 			
 			if (s == "Single") s = "Float";
-			if (s == "Int32") s = "Int";
+			if (s == "Int32") s = "Integer";
 
 			if (t.IsGenericParameter)
 				s = "T";
@@ -811,131 +836,174 @@ namespace NodeCanvas{
 		}
 
 
-		public static void ShowFieldSelectionMenu(GameObject go, List<System.Type> availableTypes, System.Action<FieldInfo> callback){
+
+		///Get a GenericMenu for field selection in a type
+		public static GenericMenu GetFieldSelectionMenu(Type type, List<Type> availableTypes, Action<FieldInfo> callback, GenericMenu menu = null){
+			
+			if (menu == null)
+				menu = new GenericMenu();
 
 			GenericMenu.MenuFunction2 Selected = delegate(object selectedField){
 				callback((FieldInfo)selectedField);
 			};
 
-			var menu = new GenericMenu();
-			foreach (Component comp in go.GetComponents<Component>()){
+			bool separatorAdded = false;
+			bool itemAdded = false;
+			foreach (FieldInfo field in type.GetFields(BindingFlags.Instance | BindingFlags.Public)){
+				foreach (Type t in availableTypes){
 
-				if (!comp || comp.hideFlags == HideFlags.HideInInspector)
-					continue;
+					if (!separatorAdded && field.DeclaringType != type){
+						menu.AddSeparator( TypeName(type) + "/");
+						separatorAdded = true;
+					}
 
-				foreach (FieldInfo field in comp.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public)){
-					foreach (Type t in availableTypes){
-						if (t.IsAssignableFrom(field.FieldType))
-							menu.AddItem(new GUIContent( TypeName(comp.GetType()) + "/" + field.Name), false, Selected, field);
+					if (t.IsAssignableFrom(field.FieldType)){
+						menu.AddItem(new GUIContent( TypeName(type) + "/" + field.Name), false, Selected, field);
+						itemAdded = true;
 					}
 				}
 			}
 
-			if (menu.GetItemCount() == 0){
-				Debug.Log("There are no Fields on any of the provided GameObject's Components that match the requirements!");
-				return;
-			}
+			if (!itemAdded)
+				menu.AddDisabledItem(new GUIContent(TypeName(type)));
 
-			menu.ShowAsContext();
-			Event.current.Use();			
+			return menu;
 		}
 
-		public static void ShowMethodSelectionMenu(GameObject go, List<System.Type> returnTypes, List<System.Type> paramTypes, System.Action<MethodInfo> callback, int maxParameters, bool propertiesOnly){
+		///Get a GenericMenu for method or property selection in a type
+		public static GenericMenu GetMetodSelectionMenu(Type type, List<Type> returnTypes, List<Type> paramTypes, System.Action<MethodInfo> callback, int maxParameters, bool propertiesOnly, GenericMenu menu = null){
+
+			if (menu == null)
+				menu = new GenericMenu();
 
 			GenericMenu.MenuFunction2 Selected = delegate(object selectedMethod){
 				callback((MethodInfo)selectedMethod);
 			};
 
-			var menu = new GenericMenu();
-			var commonMethods = new List<MethodInfo>();
+			bool separatorAdded = false;
+			bool itemAdded = false;
+			foreach (MethodInfo method in type.GetMethods(BindingFlags.Instance | BindingFlags.Public)){
 
-			foreach (Component comp in go.GetComponents<Component>()){
-
-				if (!comp || comp.hideFlags == HideFlags.HideInInspector)
+				if (propertiesOnly && !method.IsSpecialName)
 					continue;
 
-				var methodNames = new List<string>();
-				foreach (MethodInfo method in comp.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public)){
+				if (!propertiesOnly && method.IsSpecialName)
+					continue;
 
-					if (propertiesOnly && !method.IsSpecialName)
-						continue;
+				if (method.IsGenericMethod)
+					continue;
 
-					if (!propertiesOnly && method.IsSpecialName)
-						continue;
-
-					if (method.IsGenericMethod)
-						continue;
-
-					var isAssignable = false;
-					foreach(System.Type t in returnTypes){
-						if (t.IsAssignableFrom(method.ReturnType) ){
-							isAssignable = true;
-							break;
-						}
+				var isAssignable = false;
+				foreach(Type t in returnTypes){
+					if (t.IsAssignableFrom(method.ReturnType) ){
+						isAssignable = true;
+						break;
 					}
+				}
 
-					if (!isAssignable)
-						continue;
+				if (!isAssignable)
+					continue;
 
+				if (paramTypes == null)
+					maxParameters = 0;
 
-					if (paramTypes == null)
-						maxParameters = 0;
+				var parameters = method.GetParameters();
+				if (parameters.Length > maxParameters && maxParameters != -1)
+					continue;
 
-					var parameters = method.GetParameters();
-					if (parameters.Length > maxParameters && maxParameters != -1)
-						continue;
+				if (parameters.Length > 0){
 
-					if (parameters.Length > 0){
-
-						foreach(ParameterInfo param in parameters){
-							isAssignable = false;
-							foreach (System.Type t in paramTypes){
-								if (t.IsAssignableFrom(param.ParameterType) ){
-									isAssignable = true;
-									break;
-								}
+					foreach(ParameterInfo param in parameters){
+						isAssignable = false;
+						foreach (Type t in paramTypes){
+							if (t.IsAssignableFrom(param.ParameterType) ){
+								isAssignable = true;
+								break;
 							}
 						}
-
-					} else {
-
-						isAssignable = true;
 					}
 
-					if (!isAssignable)
-						continue;
+				} else {
 
-					if (method.DeclaringType == typeof(Component) || !typeof(Component).IsAssignableFrom(method.DeclaringType)){
-						commonMethods.Add(method);
-						continue;
-					}
-
-					var methodName = method.Name;
-					if (method.ReturnType == typeof(IEnumerator))
-						methodName += " (IEnumerator)";
-
-					while (methodNames.Contains(methodName))
-						methodName += " +";
-
-					menu.AddItem(new GUIContent( TypeName(comp.GetType()) + "/" + methodName), false, Selected, method);
-					methodNames.Add(methodName);
+					isAssignable = true;
 				}
+
+				if (!isAssignable)
+					continue;
+
+				if (!separatorAdded && method.DeclaringType != type){
+					menu.AddSeparator( TypeName(type) + "/");
+					separatorAdded = true;
+				}
+
+				var methodName = method.Name + " (";
+				for (int i = 0; i < parameters.Length; i++){
+					var p = parameters[i];
+					methodName += TypeName(p.ParameterType) + (i < parameters.Length-1? ", " : "");
+				}
+				methodName += ") : " + TypeName(method.ReturnType);
+
+				menu.AddItem(new GUIContent( TypeName(type) + "/" + methodName), false, Selected, method);
+				itemAdded = true;
 			}
+			
+			if (!itemAdded)
+				menu.AddDisabledItem(new GUIContent(TypeName(type)) );
 
-			foreach (MethodInfo method in commonMethods)
-				menu.AddItem(new GUIContent("Common/" + method.Name), false, Selected, method);
+			return menu;
+		}
 
-			if (menu.GetItemCount() == 0){
-				Debug.Log("There are no members on any of the provided GameObject's Components that match the requirements!");
-				return;
+
+		///Shows a GenericMenu for methods of all components of a game object
+		public static void ShowGameObjectMethodSelectionMenu(GameObject go, List<Type> returnTypes, List<Type> paramTypes, System.Action<MethodInfo> callback, int maxParameters, bool propertiesOnly){
+
+			var menu = new GenericMenu();
+			foreach (Component comp in go.GetComponents(typeof(Component)) ){
+				if (!comp || comp.hideFlags == HideFlags.HideInInspector)
+					continue;
+				menu = GetMetodSelectionMenu(comp.GetType(), returnTypes, paramTypes, callback, maxParameters, propertiesOnly, menu);
+			}
+			menu.ShowAsContext();
+			Event.current.Use();
+		}
+
+		///Shows a GenericMenu for methods of all components of a game object
+		public static void ShowGameObjectFieldSelectionMenu(GameObject go, List<Type> availableTypes, System.Action<FieldInfo> callback){
+
+			var menu = new GenericMenu();
+			foreach (Component comp in go.GetComponents(typeof(Component)) ){
+				if (!comp || comp.hideFlags == HideFlags.HideInInspector)
+					continue;
+				menu = GetFieldSelectionMenu(comp.GetType(), availableTypes, callback, menu);
+			}
+			menu.ShowAsContext();
+			Event.current.Use();
+		}
+
+
+		public static void ShowStaticMethodSelectionMenu(List<Type> types, Action<MethodInfo> callback){
+
+			GenericMenu.MenuFunction2 Selected = delegate(object selectedMethod){
+				callback((MethodInfo)selectedMethod);
+			};			
+
+			var menu = new GenericMenu();
+			foreach (Type t in GetAssemblyTypes(typeof(object)) ){
+				if (t.Namespace == "UnityEngine"){
+					foreach (MethodInfo method in t.GetMethods(BindingFlags.Static | BindingFlags.Public))
+						menu.AddItem(new GUIContent(t.Namespace + "/" + t.Name + "/" + method.Name), false, Selected, method);
+				}
 			}
 
 			menu.ShowAsContext();
 			Event.current.Use();
 		}
 
+
+
+
 		///Returns event names found on type, that are either of the default EventHandler delegate type or of a parametless delegate handler
-		public static List<string> GetAvailableEvents(System.Type type){
+		public static List<string> GetAvailableEvents(Type type){
 
 			var eventNames = new List<string>();
 			foreach(EventInfo e in type.GetEvents(BindingFlags.Instance | BindingFlags.Public)){
@@ -957,7 +1025,7 @@ namespace NodeCanvas{
 		public static bool CanConvert(Type fromType, Type toType) {
 		    try
 		    {
-		        Expression.Convert(Expression.Parameter(fromType, null), toType);
+		        System.Linq.Expressions.Expression.Convert(System.Linq.Expressions.Expression.Parameter(fromType, null), toType);
 		        return true;
 		    }
 		    catch
@@ -984,6 +1052,7 @@ namespace NodeCanvas{
 			return allSceneNames;
 		}
 
+/*
 		public static GameObject NewPrefabSafeGameObject(string name, Transform parent){
 
 			var newGO = new GameObject();
@@ -991,12 +1060,12 @@ namespace NodeCanvas{
 			#if UNITY_EDITOR
 			if (PrefabUtility.GetPrefabType(parent.gameObject) == PrefabType.Prefab){
 				var clone = PrefabUtility.InstantiatePrefab(parent.gameObject) as GameObject;
+				var root = PrefabUtility.FindPrefabRoot(clone);
 				newGO.transform.parent = clone.transform;
 				newGO.transform.localPosition = Vector3.zero;
 				var index = newGO.transform.GetSiblingIndex();
-				var root = PrefabUtility.FindPrefabRoot(clone);
 				PrefabUtility.ReplacePrefab(root, PrefabUtility.GetPrefabParent(root), ReplacePrefabOptions.ConnectToPrefab);
-				UnityEngine.Object.DestroyImmediate(root);
+				UnityEngine.Object.DestroyImmediate(root, true);
 				return parent.GetChild(index).gameObject;
 			}
 			#endif
@@ -1005,35 +1074,7 @@ namespace NodeCanvas{
 			newGO.transform.localPosition = Vector3.zero;
 			return newGO;
 		}
-
-
-	    public static void CreateAsset(Type o){
-
-	        ScriptableObject asset= ScriptableObject.CreateInstance(o);
-	        if (!asset){
-	        	Debug.LogWarning("NULL");
-	        	return;
-	        }
-	        string path= AssetDatabase.GetAssetPath (Selection.activeObject);
-	        if (path == "")
-	        {
-	            path = "Assets";
-	        }
-	        else if (Path.GetExtension (path) != "")
-	        {
-	            path = path.Replace (Path.GetFileName (AssetDatabase.GetAssetPath (Selection.activeObject)), "");
-	        }
-
-	        string assetPathAndName= AssetDatabase.GenerateUniqueAssetPath (path + "/New " + o.ToString() + ".asset");
-
-	        AssetDatabase.CreateAsset (asset, assetPathAndName);
-
-	        AssetDatabase.SaveAssets ();
-	        EditorUtility.FocusProjectWindow ();
-	        Selection.activeObject = asset;
-	    }
-
-
+*/
 		//for when getting scripts
 		public class ScriptInfo{
 

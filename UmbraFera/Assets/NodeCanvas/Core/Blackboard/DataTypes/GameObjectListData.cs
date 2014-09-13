@@ -10,7 +10,13 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = (List<GameObject>)value;}
+			set
+			{
+				if (this.value != (List<GameObject>)value ){
+					this.value = (List<GameObject>)value;
+					OnValueChanged(value);
+				}
+			}
 		}
 
 		public override object GetSerialized(){

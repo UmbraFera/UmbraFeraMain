@@ -16,7 +16,7 @@ namespace NodeCanvas.Actions{
         private bool played;
      
         protected override string info{
-            get {return "Mec.PlayAnimation '" + stateName + "'";}
+            get {return "Anim '" + stateName + "'";}
         }
      
         protected override void OnExecute(){

@@ -9,7 +9,13 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = (string)value;}
+			set
+			{
+				if (this.value != (string)value){
+					this.value = (string)value;
+					OnValueChanged(value);
+				}
+			}
 		}
 
 
@@ -20,7 +26,7 @@ namespace NodeCanvas.Variables{
 
 		public override void ShowDataGUI(){
 			GUI.backgroundColor = new Color(0.5f,0.5f,0.5f);
-			value = UnityEditor.EditorGUILayout.TextField(value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+			objectValue = (string)UnityEditor.EditorGUILayout.TextField((string)objectValue, layoutOptions);
 		}
 
 		#endif

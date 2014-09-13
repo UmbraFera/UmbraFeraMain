@@ -23,29 +23,38 @@ namespace NodeCanvas{
 	public class Blackboard : MonoBehaviour, ISavable{
 
 		[SerializeField]
-		private string _blackboardName = String.Empty;
+		private string _blackboardName = string.Empty;
 		[SerializeField]
 		private List<VariableData> variables = new List<VariableData>();
 		[SerializeField]
-		private bool _doLoadSave;
-		[SerializeField]
 		private bool _isGlobal;
 
+		private static Dictionary<Type, Type> _typeDataRelation;
 		private static Dictionary<string, Blackboard> _allBlackboards;
+
+		private static Dictionary<Type, Type> typeDataRelation{
+			get
+			{
+				if (_typeDataRelation == null)
+					_typeDataRelation = GetTypeDataRelation();
+				return _typeDataRelation;
+			}
+		}
+
 		public static Dictionary<string, Blackboard> allBlackboards{
 			get
 			{
 				if (_allBlackboards == null){
 					_allBlackboards = new Dictionary<string, Blackboard>();
 					foreach (Blackboard bb in FindObjectsOfType<Blackboard>())
-						_allBlackboards[bb.blackboardName] = bb;
+						_allBlackboards[bb.name] = bb;
 				}
 				return _allBlackboards;
 			}
 			private set {_allBlackboards = value;}
 		}
 
-		public string blackboardName{
+		new public string name{
 			get {return _blackboardName;}
 			set
 			{
@@ -53,30 +62,45 @@ namespace NodeCanvas{
 					value = gameObject.name + "_BB";
 
 				if (_blackboardName != value){
-					allBlackboards.Remove(_blackboardName);
 					_blackboardName = value;
-					allBlackboards[_blackboardName] = this;
+					allBlackboards[value] = this;
 				}
 			}
 		}
 
 		public bool isGlobal{
 			get {return _isGlobal;}
-			set	{_isGlobal = value;}
+			set
+			{
+				if (_isGlobal != value){
+					_isGlobal = value;
+					if (allBlackboards.ContainsKey(name) && allBlackboards[name] != this && value == true && allBlackboards[name].isGlobal)
+						Debug.LogWarning("There is already a Global Blackboard with name: " + name, allBlackboards[name].gameObject);
+				}
+			}
 		}
 
-		public bool doLoadSave{
-			get {return _doLoadSave;}
-			set {_doLoadSave = value;}
-		}
+		//Get the Type to Type relation of VariableData type and their contained value type.
+		private static Dictionary<Type, Type> GetTypeDataRelation(){
 
+			var pairs = new Dictionary<Type, Type>();
+			foreach (Type t in NCReflection.GetAssemblyTypes()){
+				if (typeof(VariableData).NCIsAssignableFrom(t) && !t.NCIsAbstract() && t.NCGetAttribute(typeof(ObsoleteAttribute), true) == null){
+					var valueField = t.NCGetField("value");
+					if (valueField != null)
+						pairs[t] = valueField.FieldType;
+				}
+			}
+			return pairs;
+		}
 
 		///Get all data of the blackboard
 		public List<VariableData> GetAllData(){
 			return new List<VariableData>(variables);
 		}
 
-		private VariableData AddData(string name, object value){
+		///Add a new VariableData in the blackboard
+		public VariableData AddData(string name, object value){
 			
 			if (value == null)
 				return null;
@@ -88,13 +112,18 @@ namespace NodeCanvas{
 			return newData;
 		}
 
-		private VariableData AddData(string name, Type type){
+		///Add a new VariableData in the blackboard defining name and type instead of value
+		public VariableData AddData(string name, Type type){
+
+			if (GetData(name, type) != null){
+				Debug.Log(string.Format("Variable with name '{0}' and type '{1}' already exists on blackboard '{2}'", name, type.Name, name));
+				return null;
+			}
 
 			VariableData newData = null;
 
-			var typePairs = GetTypeDataRelation();
-			foreach (KeyValuePair<Type, Type> pair in typePairs){
-				if (pair.Value == type || (pair.Value.NCIsAssignableFrom(type) && !typePairs.Values.ToList().Contains(type)) ){
+			foreach (KeyValuePair<Type, Type> pair in typeDataRelation){
+				if (pair.Value != typeof(object) && pair.Value.NCIsAssignableFrom(type) ){
 					newData = (VariableData)gameObject.AddComponent(pair.Key);
 					break;
 				}
@@ -107,20 +136,6 @@ namespace NodeCanvas{
 			variables.Add(newData);
 			newData.hideFlags = HideFlags.HideInInspector;
 			return newData;
-		}
-
-		//Get the Type to Type relation of VariableData type and their contained value type.
-		private Dictionary<Type, Type> GetTypeDataRelation(){
-
-			var pairs = new Dictionary<Type, Type>();
-			foreach (Type t in NCReflection.GetAssemblyTypes()){
-				if (typeof(VariableData).NCIsAssignableFrom(t) && !t.NCIsAbstract() && t.NCGetAttribute(typeof(ObsoleteAttribute), true) == null){
-					var valueField = t.NCGetField("value");
-					if (valueField != null)
-						pairs[t] = valueField.FieldType;
-				}
-			}
-			return pairs;
 		}
 
 		///Set the value of the VariableData variable defined by its name. If a data by that name and type doesnt exist, a new data is added by that name
@@ -146,6 +161,10 @@ namespace NodeCanvas{
 
 		///Generic way of getting data. Reccomended
 		public T GetDataValue<T>(string name){
+
+			if (string.IsNullOrEmpty(name))
+				return default(T);
+
 			var data = GetData(name, typeof(T));
 			if (data == null || data.objectValue == null || data.objectValue.Equals(null))
 				return default(T);
@@ -160,23 +179,27 @@ namespace NodeCanvas{
 		}
 
 		///Does the blackboard has the data of type and name?
+		public bool HasData(string dataName, Type type){
+			return GetData(dataName, type) != null;
+		}
+
+		///Generic version 
 		public bool HasData<T>(string dataName){
 			return GetData(dataName, typeof(T)) != null;
 		}
 
-		///Deletes the VariableData of name provided
+		///Deletes the VariableData of name provided regardless of type
 		public void DeleteData(string dataName){
 
 			VariableData data= GetData(dataName, typeof(object));
 
 			if (data != null){
-
 				variables.Remove(data);
 				DestroyImmediate(data,true);
 			}
 		}
 
-		///Get the VariableData object of a certain value type itself.
+		///Get the VariableData object of a certain variable name/type match specified
 		public VariableData GetData(string dataName, Type ofType){
 
 			VariableData lastAssignable = null;
@@ -229,14 +252,14 @@ namespace NodeCanvas{
 
 		void Awake(){
 
-			if (isGlobal && allBlackboards.ContainsKey(blackboardName) && allBlackboards[blackboardName].isGlobal)
-				Debug.LogWarning("More than one Global Blackboards exist with the same name '" + blackboardName + "'. Make sure they have different names", gameObject);
-			allBlackboards[blackboardName] = this;
+			if (isGlobal && allBlackboards.ContainsKey(name) && allBlackboards[name] != this && allBlackboards[name].isGlobal)
+				Debug.LogWarning("More than one Global Blackboards exist with the same name '" + name + "'. Make sure they have different names", gameObject);
+			allBlackboards[name] = this;
 		}
 
 		void OnDestroy(){
 
-			allBlackboards.Remove(blackboardName);
+			allBlackboards.Remove(name);
 
 			#if !UNITY_EDITOR
 			foreach(VariableData data in variables)
@@ -255,7 +278,7 @@ namespace NodeCanvas{
 		////////////////////
 
 		public string saveKey{
-			get {return "Blackboard-" + blackboardName;}
+			get {return "Blackboard-" + name;}
 		}
 
 		//Save/Load is not supported in those platforms
@@ -392,13 +415,12 @@ namespace NodeCanvas{
 			Undo.RecordObject(this, "Blackboard Inspector");
 
 			GUILayout.BeginHorizontal();
-			blackboardName = EditorGUILayout.TextField("Blackboard Name", blackboardName, new GUIStyle("textfield"), GUILayout.ExpandWidth(true));
+			name = EditorGUILayout.TextField("Blackboard Name", name, new GUIStyle("textfield"), GUILayout.ExpandWidth(true));
 			GUILayout.Label("Global", GUILayout.Width(40));
 			isGlobal = EditorGUILayout.Toggle(isGlobal, EditorStyles.radioButton, GUILayout.Width(20));
 			GUILayout.EndHorizontal();
 
 			ShowVariablesGUI();
-			//ShowSaveLoadGUI();
 
 			if (GUI.changed)
 		        EditorUtility.SetDirty(this);
@@ -419,9 +441,9 @@ namespace NodeCanvas{
 				var menu = new GenericMenu();
 				foreach (KeyValuePair<Type, Type> pair in GetTypeDataRelation()){
 
-					if (typeof(MonoBehaviour).IsAssignableFrom(pair.Value)){
-						if (!assetPaths.Contains(pair.Value.Name+".cs") && !assetPaths.Contains(pair.Value.Name+".js") && !assetPaths.Contains(pair.Value.Name+".boo")){
-							Debug.LogWarning(string.Format("Class Name {0} is different from it's script name", pair.Value.Name));
+					if (typeof(MonoBehaviour).IsAssignableFrom(pair.Key)){
+						if (!assetPaths.Contains(pair.Key.Name +".cs") && !assetPaths.Contains(pair.Key.Name+".js") && !assetPaths.Contains(pair.Key.Name+".boo")){
+							Debug.LogWarning(string.Format("Class Name {0} is different from it's script name", pair.Key.Name));
 							continue;
 						}
 					}
@@ -444,14 +466,18 @@ namespace NodeCanvas{
 				EditorGUILayout.HelpBox("Blackboard has no variables", MessageType.Info);
 			}
 
-			foreach ( VariableData data in variables.ToArray()){
 
+			EditorUtils.ReorderableList(variables, delegate(int i){
+
+				var data = variables[i];
 				if (data != null){
 
 					GUILayout.BeginHorizontal();
 
 					if (!Application.isPlaying){
 
+						GUI.backgroundColor = new Color(1,1,1,0.8f);
+						GUILayout.Box("", GUILayout.Width(6));
 						GUI.backgroundColor = new Color(0.7f,0.7f,0.7f, 0.3f);
 						data.dataName = EditorGUILayout.TextField(data.dataName, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
 
@@ -485,32 +511,13 @@ namespace NodeCanvas{
 					GUI.backgroundColor = new Color(0.7f,0.7f,0.7f);
 					GUILayout.EndHorizontal();
 				}
-			}
+			});
 
 			GUI.backgroundColor = Color.white;
 			GUI.color = Color.white;
 
 			if (GUI.changed)
 		        EditorUtility.SetDirty(this);
-		}
-
-		private void ShowSaveLoadGUI(){
-
-			GUI.backgroundColor = new Color(1,1,1,0.5f);
-			GUILayout.BeginHorizontal("box");
-			GUILayout.Label("Load OnAwake | Save OnQuit");
-			doLoadSave = EditorGUILayout.Toggle(doLoadSave);
-			GUI.color = new Color(1f,1f,1f,0.5f);
-			if (GUILayout.Button("Delete Saves")){
-				if (!PlayerPrefs.HasKey("Blackboard-" + blackboardName))
-					Debug.Log("No saved Blackboard with name '" + blackboardName + "' found to delete...", gameObject);
-				else
-					Debug.Log("Blackboard '" + blackboardName + "' saves deleted...");
-				PlayerPrefs.DeleteKey("Blackboard-" + blackboardName);
-			}
-			GUILayout.EndHorizontal();
-			GUI.backgroundColor = Color.white;
-			GUI.color = Color.white;
 		}
 
 		#endif

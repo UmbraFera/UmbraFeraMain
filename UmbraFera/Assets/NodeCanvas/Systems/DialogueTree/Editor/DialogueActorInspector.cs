@@ -20,7 +20,7 @@ namespace NodeCanvasEditor{
 			actor.portrait = (Texture2D)EditorGUILayout.ObjectField(actor.portrait, typeof(Texture2D), false, GUILayout.Width(70), GUILayout.Height(70));
 
 			GUILayout.BeginVertical();
-			actor.actorName = EditorGUILayout.TextField("Actor Name", actor.actorName);
+			actor.name = EditorGUILayout.TextField("Actor Name", actor.name);
 			actor.dialogueColor = EditorGUILayout.ColorField("Dialogue Color", actor.dialogueColor);
 			actor.dialogueOffset = EditorGUILayout.Vector3Field("Dialogue Offset", actor.dialogueOffset);
 			actor.blackboard = (Blackboard)EditorGUILayout.ObjectField("Blackboard", actor.blackboard, typeof(Blackboard), true);

@@ -3,7 +3,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
-	[Category("✫ Blackboard")]
+	[Category("✫ Blackboard/Lists")]
 	public class PickRandomListString : ActionTask {
 
 		[RequiredField]

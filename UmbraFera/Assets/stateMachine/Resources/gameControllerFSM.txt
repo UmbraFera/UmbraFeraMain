@@ -1,0 +1,27 @@
+//STATES   ID,   EVENTS
+start,0,0,83,662,This state happens when starting;
+menu,1,1,373,797,Showing the Menu;
+playing,2,2:3:5:6:11,282,50,playing the game;
+paused,3,4,819,3,player paused game;
+won,4,8,824,176,Player won;
+lost,5,7,600,327,player lost;
+gameOver,6,9:10,710,817,The game is over;
+levelUp,7,12,224,459,player leveled up
+|
+
+level=1
+|
+
+start,0,1,,;
+playClicked,1,2,,level=1;
+pauseClicked,2,3,,;
+quit,3,1,,;
+screenClicked,4,2,,;
+won,5,4,,;
+lost,6,5,,;
+done,7,6,,;
+done,8,6,,;
+replay,9,1,,;
+new,10,2,,level=1;
+levelUp,11,7,,level=level+1;
+done,12,2,,

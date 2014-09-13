@@ -16,6 +16,14 @@ namespace NodeCanvas.StateMachines{
 	///The base class for all FSM system nodes. It basicaly 'converts' methods to more friendly FSM like ones.
 	abstract public class FSMState : Node, IState{
 
+		public enum TransitionEvaluation{
+			CheckContinuously,
+			CheckAfterStateFinished
+		}
+		
+		[SerializeField]
+		private TransitionEvaluation transitionEvaluation;
+
 		public float elapsedTime{get;private set;}
 
 		public override int maxInConnections{
@@ -42,7 +50,7 @@ namespace NodeCanvas.StateMachines{
 		///Declares that the state has finished
 		protected void Finish(System.ValueType inSuccess){
 			enabled = false;
-			status = Status.Success;
+			status = (bool)inSuccess? Status.Success : Status.Failure;
 		}
 
 		sealed public override void OnGraphStarted(){
@@ -88,6 +96,9 @@ namespace NodeCanvas.StateMachines{
 		}
 
 		bool CheckTransition(){
+
+			if (status == Status.Running && transitionEvaluation == TransitionEvaluation.CheckAfterStateFinished)
+				return false;
 
 			for (int i= 0; i < outConnections.Count; i++){
 				var connection = outConnections[i] as FSMConnection;
@@ -209,7 +220,7 @@ namespace NodeCanvas.StateMachines{
 				if (nodeRect.Contains(e.mousePosition)){
 					foreach(FSMConnection connection in inConnections){
 						if (connection.sourceNode == port.parent){
-							Debug.LogWarning("State is already connected to target state. Consider using ConditionList on the existing transition if you want to check multiple conditions");
+							Debug.LogWarning("State is already connected to target state. Consider using a 'ConditionList' on the existing transition if you want to check multiple conditions");
 							clickedPort = null;
 							e.Use();
 							return;
@@ -266,11 +277,8 @@ namespace NodeCanvas.StateMachines{
 		
 		protected override void OnNodeGUI(){
 
-			if (inIconMode){
+			if (inIconMode)
 				GUILayout.Label("<i>" + nodeName + "</i>");
-			} else {
-				GUILayout.Label("", GUILayout.Height(1));
-			}
 
 			if (Application.isPlaying){
 				if (allowAsPrime && Event.current.type == EventType.MouseDown && Event.current.alt)
@@ -314,7 +322,7 @@ namespace NodeCanvas.StateMachines{
 				GUI.backgroundColor = new Color(1,1,1,0.5f);
 				GUILayout.BeginHorizontal("box");
 				if (connection.condition){
-					GUILayout.Label(connection.condition.taskInfo);
+					GUILayout.Label(connection.condition.summaryInfo);
 				} else {
 					GUILayout.Label("OnFinish" + (onFinishExists? " (exists)" : "" ));
 					onFinishExists = true;
@@ -328,6 +336,9 @@ namespace NodeCanvas.StateMachines{
 				GUILayout.EndHorizontal();
 				GUI.backgroundColor = Color.white;
 			});
+
+			if (this.GetType() != typeof(FSMAnyState))
+				transitionEvaluation = (TransitionEvaluation)EditorGUILayout.EnumPopup(transitionEvaluation);
 
 			EditorUtils.BoldSeparator();
 		}

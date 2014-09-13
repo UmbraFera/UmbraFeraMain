@@ -6,7 +6,8 @@ namespace NodeCanvas.Conditions{
 	[Category("✫ Blackboard")]
 	public class CheckString : ConditionTask {
 
-		public BBString stringA = new BBString{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBString stringA;
 		public BBString stringB;
 
 		protected override string info{

@@ -141,6 +141,9 @@ namespace NodeCanvas.DialogueTrees{
 		
 		protected override void OnNodeGUI(){
 
+			var leftLabelStyle = new GUIStyle(GUI.skin.GetStyle("label"));
+			leftLabelStyle.alignment = TextAnchor.UpperLeft;
+
 			if (outConnections.Count == 0){
 				GUILayout.Label("Connect Outcomes");
 				return;
@@ -149,7 +152,7 @@ namespace NodeCanvas.DialogueTrees{
 			for (int i= 0; i < outConnections.Count; i++){
 
 				GUILayout.BeginHorizontal("box");
-				GUILayout.Label("#" + outConnections[i].targetNode.ID.ToString() + ") " + possibleOptions[i].statement.text );
+				GUILayout.Label("#" + outConnections[i].targetNode.ID.ToString() + ") " + possibleOptions[i].statement.text, leftLabelStyle );
 				GUILayout.EndHorizontal();
 			}
 
@@ -166,11 +169,11 @@ namespace NodeCanvas.DialogueTrees{
 			base.OnNodeInspectorGUI();
 
 			if (outConnections.Count == 0){
-				EditorUtils.CoolLabel("No Choices");
+				GUILayout.Label("<b>NO CHOICES</b>");
 				return;
 			}
 
-			EditorUtils.CoolLabel("Possible Choices");
+			GUILayout.Label("<b>POSSIBLE CHOICES ▼</b>");
 
 			var e = Event.current;
 
@@ -182,7 +185,7 @@ namespace NodeCanvas.DialogueTrees{
 
 					ConditionalConnection connection= outConnections[i] as ConditionalConnection;
 					if (connection.condition){
-						GUILayout.Label(arrow + connection.condition.taskInfo);
+						GUILayout.Label(arrow + connection.condition.summaryInfo);
 					} else {
 						GUILayout.Label(arrow + "Always");
 					}

@@ -11,20 +11,25 @@ using NodeCanvas.Variables;
 namespace NodeCanvas.Conditions{
 
 	[Category("✫ Script Control")]
-	[Description("Call a boolean function on a script and return whether it returned true or false")]
-	[AgentType(typeof(Transform))]
+	[Description("Call a function with none or one parameter on a script and return whether or not the return value is equal to the check value")]
 	public class CheckFunction : ConditionTask {
 
 		public BBVariableSet paramValue1 = new BBVariableSet();
 		public BBVariableSet checkSet = new BBVariableSet();
 
 		[SerializeField]
-		private string methodName;
+		private string scriptName = typeof(Component).AssemblyQualifiedName;
 		[SerializeField]
-		private string scriptName;
+		private string methodName;
 
-		private Component script;
+		[SerializeField]
+		private CompareMethod comparison;
+
 		private MethodInfo method;
+
+		public override System.Type agentType{
+			get {return System.Type.GetType(scriptName);}
+		}
 
 		protected override string info{
 			get
@@ -34,21 +39,17 @@ namespace NodeCanvas.Conditions{
 
 				string paramInfo = "";
 				paramInfo += paramValue1.selectedType != null? paramValue1.selectedBBVariable.ToString() : "";
-				return string.Format("{0}.{1}({2}){3}", agentInfo, methodName, paramInfo, checkSet.selectedType == typeof(bool)? "" : " == " + checkSet.selectedBBVariable.ToString());
+				return string.Format("{0}.{1}({2}){3}", agentInfo, methodName, paramInfo, checkSet.selectedType == typeof(bool)? "" : TaskTools.GetCompareString(comparison) + checkSet.selectedBBVariable);
 			}
 		}
 
 		//store the method info on agent set for performance
 		protected override string OnInit(){
-			script = agent.GetComponent(scriptName);
-			if (script == null)
-				return "Missing Component '" + scriptName + "' on Agent '" + agent.gameObject.name + "'";
-
 			var paramTypes = new List<System.Type>();
 			if (paramValue1.selectedType != null)
 				paramTypes.Add(paramValue1.selectedType);
 
-			method = script.GetType().NCGetMethod(methodName, paramTypes.ToArray());
+			method = agent.GetType().NCGetMethod(methodName, paramTypes.ToArray());
 
 			if (method == null)
 				return "Missing Method Info";
@@ -63,7 +64,10 @@ namespace NodeCanvas.Conditions{
 			if (paramValue1.selectedType != null)
 				args = new object[]{paramValue1.objectValue};
 
-			return method.Invoke(script, args).Equals( checkSet.objectValue );
+			if (checkSet.selectedType == typeof(float) || checkSet.selectedType == typeof(int))
+				return TaskTools.Compare( (System.IComparable)method.Invoke(agent, args), (System.IComparable)checkSet.objectValue, comparison );
+
+			return Equals( method.Invoke(agent, args), checkSet.objectValue );
 		}
 
 		////////////////////////////////////////
@@ -73,47 +77,66 @@ namespace NodeCanvas.Conditions{
 
 		[SerializeField]
 		private List<string> paramNames = new List<string>{"Param1"}; //init for update
+
+		/////UPDATING
+		protected override void OnEditorValidate(){
+			if (agentType == null)
+				scriptName = EditorUtils.GetType(scriptName, typeof(Component)).AssemblyQualifiedName;
+		}
+		///////	
 		
 		protected override void OnTaskInspectorGUI(){
 
-			if (agent == null){
-				EditorGUILayout.HelpBox("This Condition needs the Agent to be known. Currently the Agent is unknown.\nConsider overriding the Agent.", MessageType.Error);
-				return;
+			if (!Application.isPlaying && agent == null && GUILayout.Button("Alter Type")){
+				System.Action<System.Type> TypeSelected = delegate(System.Type t){
+					var newName = t.AssemblyQualifiedName;
+					if (newName != scriptName){
+						scriptName = newName;
+						methodName = null;
+					}
+				};
+
+				EditorUtils.ShowConfiguredTypeSelectionMenu(typeof(Component), TypeSelected);
 			}
 
-			if (agent.GetComponent(scriptName) == null){
-				scriptName = null;
-				methodName = null;
-				paramValue1.selectedType = null;
-			}
-
-			if (GUILayout.Button("Select Method")){
-				EditorUtils.ShowMethodSelectionMenu(agent.gameObject, checkSet.availableTypes, paramValue1.availableTypes, delegate(MethodInfo method){
-					scriptName = method.ReflectedType.Name;
+			if (!Application.isPlaying && GUILayout.Button("Select Method")){
+				System.Action<MethodInfo> MethodSelected = delegate(MethodInfo method){
+					scriptName = method.DeclaringType.AssemblyQualifiedName;
 					methodName = method.Name;
 					var parameters = method.GetParameters();
 					paramNames = parameters.Select(p => p.Name).ToList();
 					paramValue1.selectedType = parameters.Length >= 1? parameters[0].ParameterType : null;
 					checkSet.selectedType = method.ReturnType;
-					if (Application.isPlaying)
-						OnInit();
-				}, 1, false);
+					comparison = CompareMethod.EqualTo;
+				};
+
+				if (agent != null){
+					EditorUtils.ShowGameObjectMethodSelectionMenu(agent.gameObject, checkSet.availableTypes, paramValue1.availableTypes, MethodSelected, 1, false);
+				} else {
+					var menu = EditorUtils.GetMetodSelectionMenu(agentType, checkSet.availableTypes, paramValue1.availableTypes, MethodSelected, 1, false);
+					menu.ShowAsContext();
+					Event.current.Use();
+				}
 			}
 
 			if (!string.IsNullOrEmpty(methodName)){
 				GUILayout.BeginVertical("box");
-				EditorGUILayout.LabelField("Selected Component", scriptName);
-				EditorGUILayout.LabelField("Selected Method", methodName);
-				if (paramValue1.selectedType != null)
-					EditorGUILayout.LabelField(paramNames[0], EditorUtils.TypeName(paramValue1.selectedType));
+				EditorGUILayout.LabelField("Type", agentType.Name);
+				EditorGUILayout.LabelField("Method", methodName);
 				GUILayout.EndVertical();
+
+				if (paramValue1.selectedType != null)
+					EditorUtils.BBVariableField(paramNames[0], paramValue1.selectedBBVariable);
+
+				if (checkSet.selectedType != null){
+
+					GUI.enabled = checkSet.selectedType == typeof(float) || checkSet.selectedType == typeof(int);
+					comparison = (CompareMethod)EditorGUILayout.EnumPopup("Comparison", comparison);
+					GUI.enabled = true;
+
+					EditorUtils.BBVariableField("Value", checkSet.selectedBBVariable);
+				}
 			}
-
-			if (paramValue1.selectedType != null)
-				EditorUtils.BBVariableField(paramNames[0], paramValue1.selectedBBVariable);
-
-			if (checkSet.selectedType != null)
-				EditorUtils.BBVariableField("Is Equal To", checkSet.selectedBBVariable);
 		}
 
 		#endif

@@ -9,11 +9,6 @@ namespace NodeCanvasEditor{
 	public class HierarchyIcons{
 		
 		static HierarchyIcons(){
-/*
-			if (!System.IO.Directory.Exists(Application.dataPath + "/Gizmos"))
-				AssetDatabase.CreateFolder("Assets", "Gizmos");
-			AssetDatabase.MoveAsset("Assets/NodeCanvas/GraphOwner.png", "Assets/Gizmos/GraphOwner.png");
-*/
 			EditorApplication.hierarchyWindowItemOnGUI += ShowIcon;
 		}
 
@@ -30,6 +25,7 @@ namespace NodeCanvasEditor{
 		}
 	}
 
+	[CustomEditor(typeof(GraphOwner), true)]
 	public class GraphOwnerInspector : Editor {
 
 		private string debugEvent;
@@ -41,13 +37,8 @@ namespace NodeCanvasEditor{
 		void OnDestroy(){
 
 			if (owner == null){
-				if (owner.behaviour != null){
-					var selectedOption = EditorUtility.DisplayDialogComplex("Removing Graph Owner", "When removing Owner, it's assigned behaviour is not deleted automaticaly since it might be shared amongst many Owners.\nDo you want to delete the assigned Graph?", "Yes", "No", "No & Select Graph");
-					if (selectedOption == 0)
-						Undo.DestroyObjectImmediate(owner.behaviour.gameObject);
-					if (selectedOption == 2)
-						Selection.activeObject = owner.behaviour;
-				}
+				if (owner.behaviour != null)
+					EditorUtility.DisplayDialog("Removing Graph Owner", "When removing Owner, it's assigned behaviour is not deleted automaticaly since it might be shared amongst many Owners", "OK");
 			}
 		}
 
@@ -78,9 +69,9 @@ namespace NodeCanvasEditor{
 
 			GUILayout.Space(10);
 
-			owner.behaviour.graphName = EditorGUILayout.TextField(label + " Name", owner.behaviour.graphName);
-            if (string.IsNullOrEmpty(owner.behaviour.graphName))
-              owner.behaviour.graphName = owner.behaviour.gameObject.name;
+			owner.behaviour.name = EditorGUILayout.TextField(label + " Name", owner.behaviour.name);
+            if (string.IsNullOrEmpty(owner.behaviour.name))
+              owner.behaviour.name = owner.behaviour.gameObject.name;
 			owner.behaviour.graphComments = GUILayout.TextArea(owner.behaviour.graphComments, GUILayout.Height(45));
 			EditorUtils.TextFieldComment(owner.behaviour.graphComments);
 
@@ -101,21 +92,20 @@ namespace NodeCanvasEditor{
 
 			if (owner.behaviour != null && !(PrefabUtility.GetPrefabType(owner.behaviour) == PrefabType.Prefab) && Application.isPlaying){
 
-				var behaviour = owner.behaviour;
 				var pressed = new GUIStyle(GUI.skin.GetStyle("button"));
 				pressed.normal.background = GUI.skin.GetStyle("button").active.background;
 
 				GUILayout.BeginHorizontal("box");
 				GUILayout.FlexibleSpace();
 
-				if (GUILayout.Button(EditorUtils.playIcon, behaviour.isRunning || behaviour.isPaused? pressed : "button")){
-					if (behaviour.isRunning || behaviour.isPaused) behaviour.StopGraph();
-					else behaviour.StartGraph();
+				if (GUILayout.Button(EditorUtils.playIcon, owner.isRunning || owner.isPaused? pressed : "button")){
+					if (owner.isRunning || owner.isPaused) owner.StopBehaviour();
+					else owner.StartBehaviour();
 				}
 
-				if (GUILayout.Button(EditorUtils.pauseIcon, behaviour.isPaused? pressed : "button")){	
-					if (behaviour.isPaused) behaviour.StartGraph();
-					else behaviour.PauseGraph();
+				if (GUILayout.Button(EditorUtils.pauseIcon, owner.isPaused? pressed : "button")){	
+					if (owner.isPaused) owner.StartBehaviour();
+					else owner.PauseBehaviour();
 				}
 
 				OnGrapOwnerControls();

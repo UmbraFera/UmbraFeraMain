@@ -1,0 +1,11 @@
+//STATES   ID,   EVENTS
+start,0,0,227,41,This state happens when...;
+playing,1,1,578,106,This state happens when...;
+gameOver,2,2,654,355,This state happens when...
+|
+
+|
+
+tick,0,1,,;
+tick,1,2,,;
+tick,2,0,,

@@ -6,7 +6,8 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-//using System.Reflection;
+using System.Reflection;
+using NodeCanvas.Variables;
 
 namespace NodeCanvas{
 
@@ -33,14 +34,6 @@ namespace NodeCanvas{
 		/////
 
 		new public string name{
-			get {return graphName;}
-		}
-
-		public float elapsedTime{
-			get {return isRunning || isPaused? Time.time - timeStarted : 0;}
-		}
-
-		public string graphName{
 			get
 			{
 				if (string.IsNullOrEmpty(_graphName))
@@ -54,6 +47,10 @@ namespace NodeCanvas{
 				//if (gameObject.name != value && !string.IsNullOrEmpty(value))
 				//	gameObject.name = value;
 			}
+		}
+
+		public float elapsedTime{
+			get {return isRunning || isPaused? Time.time - timeStarted : 0;}
 		}
 
 		///The base type of all nodes that can live in this system
@@ -87,6 +84,7 @@ namespace NodeCanvas{
 				
 				_primeNode = value;
 				UpdateNodeIDsInGraph();
+				ReorderNodeList();
 			}
 		}
 
@@ -105,7 +103,6 @@ namespace NodeCanvas{
 					_agent = value;
 					SendTaskOwnerDefaults();
 				}
-				_agent = value;
 			}
 		}
 
@@ -119,7 +116,6 @@ namespace NodeCanvas{
 					UpdateAllNodeBBFields();
 					SendTaskOwnerDefaults();
 				}
-				_blackboard = value;
 			}
 		}
 
@@ -156,6 +152,16 @@ namespace NodeCanvas{
 		protected void Awake(){
 			MonoManager.Create();
 			UpdateNodeIDsInGraph();
+			ReorderNodeList();
+		}
+
+		protected void OnDestroy(){
+			runningGraphs.Remove(this);
+			MonoManager.current.RemoveMethod(OnGraphUpdate);
+		}
+
+		//This is not really nescessary
+		public void ReorderNodeList(){
 			allNodes = allNodes.OrderBy(node => node.ID).ToList();
 		}
 
@@ -265,6 +271,7 @@ namespace NodeCanvas{
 			}
 
 			UpdateNodeIDsInGraph();
+			ReorderNodeList();
 			
 			this.blackboard = blackboard;
 			this.agent = agent;
@@ -273,12 +280,13 @@ namespace NodeCanvas{
 
 			isRunning = true;
 			runningGraphs.Add(this);
-			SendTaskMessage("OnGraphStarted");
 			if (!isPaused){
 				timeStarted = Time.time;
 				foreach (Node node in allNodes)
 					node.OnGraphStarted();
 			}
+
+			SendTaskMessage("OnGraphStarted");
 
 			MonoManager.current.AddMethod(OnGraphUpdate);
 			OnGraphStarted();
@@ -305,14 +313,13 @@ namespace NodeCanvas{
 			isRunning = false;
 			isPaused = false;
 			runningGraphs.Remove(this);
-			SendTaskMessage("OnGraphStoped");
 
+			OnGraphStoped();
 			foreach(Node node in allNodes){
 				node.ResetNode(false);
 				node.OnGraphStoped();
 			}
-
-			OnGraphStoped();
+			SendTaskMessage("OnGraphStoped");
 
 			if (FinishCallback != null)
 				FinishCallback();
@@ -334,22 +341,16 @@ namespace NodeCanvas{
 			isRunning = false;
 			isPaused = true;
 			runningGraphs.Remove(this);
-			SendTaskMessage("OnGraphPaused");
-
-			foreach (Node node in allNodes)
-				node.OnGraphPaused();
 
 			OnGraphPaused();
+			foreach (Node node in allNodes)
+				node.OnGraphPaused();
+			SendTaskMessage("OnGraphPaused");
 		}
 
 		///Override this for when the graph is paused
 		virtual protected void OnGraphPaused(){
 
-		}
-
-		protected void OnDestroy(){
-			runningGraphs.Remove(this);
-			MonoManager.current.RemoveMethod(OnGraphUpdate);
 		}
 
 		///Get a node by it's ID, null if not found
@@ -374,7 +375,7 @@ namespace NodeCanvas{
 		public T GetNodeWithTag<T>(string name) where T:Node{
 
 			foreach (T node in allNodes.OfType<T>()){
-				if (node.tagName == name)
+				if (node.tag == name)
 					return node;
 			}
 			return default(T);
@@ -385,7 +386,7 @@ namespace NodeCanvas{
 
 			var nodes = new List<T>();
 			foreach (T node in allNodes.OfType<T>()){
-				if (node.tagName == name)
+				if (node.tag == name)
 					nodes.Add(node);
 			}
 			return nodes;
@@ -396,7 +397,7 @@ namespace NodeCanvas{
 
 			var nodes = new List<T>();
 			foreach (T node in allNodes.OfType<T>()){
-				if (!string.IsNullOrEmpty(node.tagName))
+				if (!string.IsNullOrEmpty(node.tag))
 					nodes.Add(node);
 			}
 			return nodes;
@@ -457,6 +458,40 @@ namespace NodeCanvas{
 			return graphs;
 		}
 
+
+		public Dictionary<BBVariable, object> GetDefinedBBVariables(){
+
+			var objects = new List<object>();
+			objects.AddRange(GetAllTasksOfType<Task>(false).Cast<object>());
+			objects.AddRange(GetAllNodesOfType<Node>().Cast<object>());
+			var bbVars = new Dictionary<BBVariable, object>();
+
+			foreach (object o in objects){
+
+				foreach (FieldInfo field in o.GetType().NCGetFields()){
+
+					if (typeof(BBVariable).NCIsAssignableFrom(field.FieldType)){
+						var bbVar = field.GetValue(o) as BBVariable;
+						if (bbVar != null && bbVar.useBlackboard && !bbVar.isNone)
+							bbVars[bbVar] = o;
+					}
+
+					if (field.FieldType == typeof(BBVariableSet)){
+						var varSet = field.GetValue(o) as BBVariableSet;
+						if (varSet != null){
+							var bbVar = varSet.selectedBBVariable;
+							if (bbVar != null && bbVar.useBlackboard && !bbVar.isNone)
+								bbVars[bbVar] = o;
+						}
+					}
+				}
+			}
+
+			return bbVars;
+		}
+
+
+
 		///Update the IDs of the nodes in the graph. Is automatically called whenever a change happens in the graph by the adding removing connecting etc.
 		public void UpdateNodeIDsInGraph(){
 
@@ -467,23 +502,28 @@ namespace NodeCanvas{
 				lastID = primeNode.AssignIDToGraph(this, lastID);
 
 			//then set remaining nodes that are not connected
-			foreach (Node node in allNodes.ToArray()){
-				if (node.inConnections.Count == 0)
-					lastID = node.AssignIDToGraph(this, lastID);
+			for (int i = 0; i < allNodes.Count; i++){
+				if (allNodes[i].inConnections.Count == 0)
+					lastID = allNodes[i].AssignIDToGraph(this, lastID);
 			}
 
-			//allNodes = allNodes.OrderBy(node => node.ID).ToList();
-
 			//reset the check
-			foreach (Node node in allNodes.ToArray())
-				node.ResetRecursion();
+			for (int i = 0; i < allNodes.Count; i++)
+				allNodes[i].ResetRecursion();
 		}
 
-
-
+		[System.Obsolete("Use 'AddNode' instead")]
+		public Node AddNewNode(System.Type nodeType){
+			return AddNode(nodeType);
+		}
 
 		///Add a new node to this graph
-		public Node AddNewNode(System.Type nodeType){
+		public T AddNode<T>() where T : Node{
+			return AddNode(typeof(T)) as T;
+		}
+
+		///Add a new node to this graph
+		public Node AddNode(System.Type nodeType){
 
 			if (!baseNodeType.NCIsAssignableFrom(nodeType)){
 				Debug.Log(nodeType + " can't be added to " + this.GetType() + " graph");
@@ -563,9 +603,8 @@ namespace NodeCanvas{
 			INestedNode nestNode = node as INestedNode;
 			if (nestNode != null && nestNode.nestedGraph != null){
 				var isPrefab = PrefabUtility.GetPrefabType(nestNode.nestedGraph) == PrefabType.Prefab;
-				if (!isPrefab && EditorUtility.DisplayDialog("Deleting Nested Node", "Delete assign nested graph as well?", "Yes", "No")){
+				if (!isPrefab && EditorUtility.DisplayDialog("Deleting Nested Node", "Delete assign nested graph '" + nestNode.nestedGraph.name + "' as well?", "Yes", "No"))
 					Undo.DestroyObjectImmediate(nestNode.nestedGraph.gameObject);
-				}
 			}
 			#endif
 		}
@@ -632,11 +671,6 @@ namespace NodeCanvas{
 
 			UpdateNodeIDsInGraph();
 		}
-
-
-
-
-
 
 
 		////////////////////////////////////////
@@ -734,7 +768,9 @@ namespace NodeCanvas{
 		///
 
 		[ContextMenu("Reset")]
-		protected void Reset(){}
+		protected void Reset(){
+			_nodesRoot = nodesRoot;
+		}
 		protected void OnValidate(){}
 		[ContextMenu("Copy Component")]
 		protected void CopyComponent(){ Debug.Log("Unsupported");}
@@ -746,7 +782,7 @@ namespace NodeCanvas{
 		public static Graph CreateNested(INestedNode parent, System.Type type, string name){
 
 			var newGraph = new GameObject(name).AddComponent(type) as Graph;
-			newGraph.graphName = name;
+			newGraph.name = name;
 			Undo.RegisterCreatedObjectUndo(newGraph.gameObject, "New Graph");
 			
 			if (parent != null){
@@ -783,30 +819,33 @@ namespace NodeCanvas{
 
 			GUI.color = Color.white;
 			GUI.backgroundColor = Color.white;
+
+			UpdateNodeIDsInGraph();
+			ReorderNodeList();
 		
 			if (primeNode)
 				GUI.Box(new Rect(primeNode.nodeRect.x, primeNode.nodeRect.y - 20, primeNode.nodeRect.width, 20), "<b>START</b>");
 
-			for (int i= 0; i < allNodes.Count; i++){
-				
+			foreach (Node node in allNodes){
+
 				//Panning nodes
 				if ( (e.button == 2 && e.type == EventType.MouseDrag) || (e.button == 0 && e.type == EventType.MouseDrag && e.shift && e.isMouse) )	{
-					Undo.RecordObject(allNodes[i], "Move");
-					allNodes[i].nodeRect.center += e.delta;
+					Undo.RecordObject(node, "Move");
+					node.nodeRect.center += e.delta;
 				}
 
-				if (RectContainsRect(drawCanvas, allNodes[i].nodeRect))
-					allNodes[i].ShowNodeGUI();
+				if (RectContainsRect(drawCanvas, node.nodeRect))
+					node.ShowNodeGUI();
 			}
 
 			//This better be done in seperate pass
-			for (int i= 0; i < allNodes.Count; i++)
-				allNodes[i].DrawNodeConnections();
+			foreach (Node node in allNodes)
+				node.DrawNodeConnections();
 		}
 
 		//Is rect B marginaly contained inside rect A?
 		bool RectContainsRect(Rect a, Rect b){
-			return a.Contains(new Vector2(b.x, b.y)) || a.Contains(new Vector2(b.xMax, b.yMax));
+			return b.xMin <= a.xMax && b.xMax >= a.xMin && b.yMin <= a.yMax && b.yMax >= a.yMin;
 		}
 
 		//This is called outside of windows
@@ -823,9 +862,6 @@ namespace NodeCanvas{
 				PostGUI();
 				PostGUI = null;
 			}
-
-			UpdateNodeIDsInGraph();
-			allNodes = allNodes.OrderBy(node => node.ID).ToList();
 		}
 /*
 		//TODO
@@ -914,7 +950,7 @@ namespace NodeCanvas{
 					var pos = e.mousePosition + scrollOffset;
 					System.Action<System.Type> Selected = delegate(System.Type type){
 						
-						var newNode = AddNewNode(type);
+						var newNode = AddNode(type);
 						newNode.nodeRect.center = pos;
 						if (NCPrefs.autoConnect && focusedNode != null && (focusedNode.outConnections.Count < focusedNode.maxOutConnections || focusedNode.maxOutConnections == -1) ){
 							ConnectNode(focusedNode, newNode);
@@ -923,15 +959,9 @@ namespace NodeCanvas{
 						}
 					};
 
-					EditorUtils.ShowTypeSelectionMenu(baseNodeType, Selected );
+					EditorUtils.GetTypeSelectionMenu(baseNodeType, Selected).ShowAsContext();
 					e.Use();
 				}
-			}
-
-			//Contract all nodes
-			if (e.isKey && e.alt && e.keyCode == KeyCode.Q){
-				ContractAllNodes();
-				e.Use();
 			}
 
 			//Duplicate
@@ -941,20 +971,12 @@ namespace NodeCanvas{
 			}
 		}
 
-		void ContractAllNodes(){
-			foreach (Node node in allNodes){
-				Undo.RecordObject(node, "Contract All Nodes");
-				node.nodeRect.width = Node.minSize.x;
-				node.nodeRect.height = Node.minSize.y;
-			}			
-		}
-
 		//Show the comments window
 		void ShowGraphCommentsGUI(){
 
 			if (showComments && !string.IsNullOrEmpty(graphComments)){
 				GUI.backgroundColor = new Color(1f,1f,1f,0.3f);
-				GUI.Box(new Rect(15, Screen.height - 100, 330, 60), graphComments, new GUIStyle("textArea"));
+				GUI.Box(new Rect(10, Screen.height - 100, 330, 60), graphComments, new GUIStyle("textArea"));
 				GUI.backgroundColor = Color.white;
 			}
 		}
@@ -968,7 +990,7 @@ namespace NodeCanvas{
 			}
 
 			inspectorRect.width = 330;
-			inspectorRect.x = 15;
+			inspectorRect.x = 10;
 			inspectorRect.y = 30;
 			GUISkin lastSkin = GUI.skin;
 			GUI.Box(inspectorRect, "", "windowShadow");
@@ -1025,6 +1047,57 @@ namespace NodeCanvas{
 				blackboardRect.height = GUILayoutUtility.GetLastRect().yMax + 5;
 			GUILayout.EndArea();		
 		}
+
+        class BBVarInfo{
+            public System.Type type;
+            public int count;
+            public List<object> objects = new List<object>();
+            public bool dynamic;
+        }
+
+        public void ShowDefinedBBVariablesGUI(){
+
+            var varInfo = new Dictionary<string, BBVarInfo>();
+            foreach (KeyValuePair<BBVariable, object> pair in GetDefinedBBVariables()){
+                if (!varInfo.ContainsKey(pair.Key.dataName))
+                    varInfo[pair.Key.dataName] = new BBVarInfo();
+                varInfo[pair.Key.dataName].type = pair.Key.varType;
+                varInfo[pair.Key.dataName].dynamic = pair.Key.isDynamic;
+                varInfo[pair.Key.dataName].count ++;
+                varInfo[pair.Key.dataName].objects.Add(pair.Value);
+            }
+
+            EditorUtils.BoldSeparator();
+            EditorUtils.CoolLabel("Defined Parameters");
+            EditorUtils.Separator();
+            
+            GUILayout.BeginHorizontal();
+            GUILayout.BeginVertical(GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+            GUI.color = Color.yellow;
+            GUILayout.Label("Name");
+            GUI.color = Color.white;
+            foreach (KeyValuePair<string, BBVarInfo> pair in varInfo)
+                GUILayout.Label(string.Format(pair.Value.dynamic? "<i>{0}</i>" : "{0}", pair.Key));
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical(GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+            GUI.color = Color.yellow;            
+            GUILayout.Label("Type");
+            GUI.color = Color.white;
+            foreach (KeyValuePair<string, BBVarInfo> pair in varInfo)
+                GUILayout.Label(EditorUtils.TypeName(pair.Value.type) );
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical(GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+            GUI.color = Color.yellow;
+            GUILayout.Label("Occurencies");
+            GUI.color = Color.white;
+            foreach (KeyValuePair<string, BBVarInfo> pair in varInfo)
+                GUILayout.Label(pair.Value.count.ToString());
+            GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
+        }
+
 
 		void OnDrawGizmos(){
 

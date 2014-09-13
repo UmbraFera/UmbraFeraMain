@@ -9,7 +9,13 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = (Vector2)value;}
+			set
+			{
+				if (this.value != (Vector2)value){
+					this.value = (Vector2)value;
+					OnValueChanged(value);
+				}
+			}
 		}
 
 		public override object GetSerialized(){
@@ -27,7 +33,7 @@ namespace NodeCanvas.Variables{
 		#if UNITY_EDITOR
 
 		public override void ShowDataGUI(){
-			value = UnityEditor.EditorGUILayout.Vector2Field("", value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true), GUILayout.MaxHeight(18));
+			objectValue = (Vector2)UnityEditor.EditorGUILayout.Vector2Field("", (Vector2)objectValue, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true), GUILayout.MaxHeight(18));
 		}
 
 		#endif

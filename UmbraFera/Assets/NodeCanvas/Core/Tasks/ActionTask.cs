@@ -31,13 +31,13 @@ namespace NodeCanvas{
 		///The estimated length this action will take to complete
 		virtual public float estimatedLength{get; private set;}
 
-		sealed public override string taskInfo{
+		sealed override public string summaryInfo{
 			get {return (agentIsOverride? "* " : "") + info;}
 		}
 
 		//Override in your own actions to provide the visible editor action info whenever it's shown
 		virtual protected string info{
-			get {return taskName;}
+			get {return name;}
 		}
 
 		
@@ -53,12 +53,19 @@ namespace NodeCanvas{
 		///once the action is completed. The argument in most cases will be a boolean specifying if the action did succeed or failed.
 		public void ExecuteAction(Component agent, Blackboard blackboard, System.Action<System.ValueType> callback){
 
+			if (!isActive){
+				callback(false);
+				return;
+			}
+
 			if (isRunning)
 				return;
 
-			//if Init fails just return
-			if (!Set(agent, blackboard))
+			if (!Set(agent, blackboard)){
+				isActive = false;
+				callback(false);
 				return;
+			}
 
 			FinishCallback = callback;
 			isRunning = true;
@@ -105,9 +112,9 @@ namespace NodeCanvas{
 				elapsedTime = 0;
 			}
 
-			enabled = false;
 			isRunning = false;
 			isPaused = false;
+			enabled = false;
 			OnStop();
 
 			if (FinishCallback != null)
@@ -149,29 +156,12 @@ namespace NodeCanvas{
 		#if UNITY_EDITOR
 
 		///Editor: Draw the action's controls.
-		sealed override public void ShowInspectorGUI(){
-
+		sealed protected override void SealedInspectorGUI(){
 			if (Application.isPlaying){
-				if (elapsedTime > 0)
-					GUI.color = Color.yellow;
-
+				if (elapsedTime > 0) GUI.color = Color.yellow;
 				EditorGUILayout.LabelField("Elapsed Time", elapsedTime.ToString());
+				GUI.color = Color.white;
 			}
-			
-			GUI.color = Color.white;
-
-			Undo.RecordObject(this, "Action Value Change");
-			base.ShowInspectorGUI();
-			OnTaskInspectorGUI();
-
-			if (GUI.changed && this != null)
-				EditorUtility.SetDirty(this);
-		}
-
-		///Editor: Optional override to show custom controls whenever the ShowInspectorGUI is called. By default controls will automaticaly show for most types
-		virtual protected void OnTaskInspectorGUI(){
-
-			DrawDefaultInspector();
 		}
 
 		#endif

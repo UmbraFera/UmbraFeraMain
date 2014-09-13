@@ -6,7 +6,8 @@ namespace NodeCanvas.Conditions{
 	[Category("✫ Blackboard")]
 	public class CheckBoolean : ConditionTask{
 
-		public BBBool valueA = new BBBool{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBBool valueA;
 		public BBBool valueB;
 
 		protected override string info{

@@ -7,6 +7,7 @@ namespace NodeCanvas.Actions{
  
     [Category("✫ Blackboard")]
     [AgentType(typeof(Blackboard))]
+    [Description("Use this to set a variable on any blackboard by overriding the agent")]
     public class SetAnyBlackboardVariable : ActionTask {
 
         [RequiredField]
@@ -30,14 +31,10 @@ namespace NodeCanvas.Actions{
         ////////////////////////////////////////
         #if UNITY_EDITOR
         
-        [SerializeField]
-        private int selectedIndex;
-
         protected override void OnTaskInspectorGUI(){
 
         	DrawDefaultInspector();
-        	selectedIndex = UnityEditor.EditorGUILayout.Popup("Type", selectedIndex, variableSet.availableTypes.Select(t => EditorUtils.TypeName(t)).ToArray());
-        	variableSet.selectedType = variableSet.availableTypes[selectedIndex];
+            variableSet.selectedType = EditorUtils.Popup<System.Type>("Type", variableSet.selectedType, variableSet.availableTypes);
         	if (variableSet.selectedBBVariable != null)
         		EditorUtils.BBVariableField("Value", variableSet.selectedBBVariable);
         }

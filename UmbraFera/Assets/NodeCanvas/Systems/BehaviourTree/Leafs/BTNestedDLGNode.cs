@@ -72,13 +72,13 @@ namespace NodeCanvas.BehaviourTrees{
 
 		    if (nestedDLG){
 
-		    	GUILayout.Label("'" + nestedDLG.graphName + "'");
+		    	GUILayout.Label("'" + nestedDLG.name + "'");
 			    	
 			} else {
 				
 				if (GUILayout.Button("CREATE NEW")){
 					nestedDLG = (DialogueTree)Graph.CreateNested(this, typeof(DialogueTree), "Dialogue Tree");
-					nestedDLG.transform.parent = null;
+					//nestedDLG.transform.parent = null;
 					if (graphAgent != null && graphAgent.GetComponent<DialogueActor>() == null){
 						if (UnityEditor.EditorUtility.DisplayDialog("Nested Dialogue Node", "The current agent doesn't have a DialogueActor component. Add one?", "Yes", "No")){
 							var newActor = graphAgent.gameObject.AddComponent<DialogueActor>();
@@ -95,7 +95,7 @@ namespace NodeCanvas.BehaviourTrees{
 			nestedDLG = UnityEditor.EditorGUILayout.ObjectField("Dialogue Tree", nestedDLG, typeof(DialogueTree), true) as DialogueTree;
 
 			if (nestedDLG != null)
-		    	nestedDLG.graphName = UnityEditor.EditorGUILayout.TextField("Name", nestedDLG.graphName);
+		    	nestedDLG.name = UnityEditor.EditorGUILayout.TextField("Name", nestedDLG.name);
 		}
 
 		#endif

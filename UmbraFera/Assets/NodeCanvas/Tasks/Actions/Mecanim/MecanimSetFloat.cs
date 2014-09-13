@@ -20,13 +20,18 @@ namespace NodeCanvas.Actions{
 
 		protected override void OnExecute(){
 
+			if (TransitTime <= 0){
+				animator.SetFloat(MecanimParameter, SetTo.value);
+				EndAction();
+				return;
+			}
+
 			currentValue = animator.GetFloat(MecanimParameter);
 		}
 
 		protected override void OnUpdate(){
 
-			animator.SetFloat(MecanimParameter, Mathf.Lerp(currentValue, (float)SetTo.value, elapsedTime/TransitTime));
-
+			animator.SetFloat(MecanimParameter, Mathf.Lerp(currentValue, SetTo.value, elapsedTime/TransitTime));
 			if (elapsedTime >= TransitTime)
 				EndAction(true);
 		}

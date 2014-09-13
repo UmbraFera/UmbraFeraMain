@@ -72,7 +72,7 @@ namespace NodeCanvas.BehaviourTrees{
 		
 		protected override void OnNodeGUI(){
 
-			GUILayout.Label( (isDynamic? "<b>DYNAMIC</b>\n" : "") + policy.ToString());
+			GUILayout.Label( (isDynamic? "<b>DYNAMIC</b>\n" : "") + EditorUtils.SplitCamelCase(policy.ToString()) );
 		}
 
 		#endif

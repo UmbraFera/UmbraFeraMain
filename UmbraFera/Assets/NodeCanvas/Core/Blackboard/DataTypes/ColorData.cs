@@ -9,7 +9,13 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = (Color)value;}
+			set
+			{
+				if ((Color)value != this.value){
+					this.value = (Color)value;
+					OnValueChanged(value);
+				}
+			}
 		}
 
 		public override System.Object GetSerialized(){
@@ -27,7 +33,7 @@ namespace NodeCanvas.Variables{
 		#if UNITY_EDITOR
 		
 		public override void ShowDataGUI(){
-			value = UnityEditor.EditorGUILayout.ColorField(value, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+			value = UnityEditor.EditorGUILayout.ColorField(value, layoutOptions);
 		}
 
 		#endif

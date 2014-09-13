@@ -4,7 +4,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
-	[Category("✫ Blackboard")]
+	[Category("✫ Blackboard/Lists")]
 	public class ClearList : ActionTask {
 
 		[VariableType(typeof(IList))] [RequiredField]

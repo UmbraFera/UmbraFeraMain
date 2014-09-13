@@ -12,7 +12,7 @@ namespace NodeCanvas.DialogueTrees{
 		private string _actorName = "_Owner";
 
 		public override string nodeName{
-			get{return "";}
+			get{return string.Format("#{0}", ID);}
 		}
 
 		public override int maxInConnections{
@@ -35,7 +35,7 @@ namespace NodeCanvas.DialogueTrees{
 			set
 			{
 				_actorName = value;
-				DLGTree.actorReferences[value] = DialogueActor.FindActorWithName(value);
+				DLGTree.actorReferences[value] = DialogueActor.Find(value);
 				foreach (Task task in GetComponentsInChildren<Task>(true))
 					task.SetOwnerSystem(this);
 			}
@@ -72,7 +72,7 @@ namespace NodeCanvas.DialogueTrees{
 					return graphAgent == null? null : graphAgent.GetComponent<DialogueActor>();
 
 				if (!DLGTree.actorReferences.ContainsKey(actorName))
-					DLGTree.actorReferences[actorName] = DialogueActor.FindActorWithName(actorName);
+					DLGTree.actorReferences[actorName] = DialogueActor.Find(actorName);
 
 				return DLGTree.actorReferences[actorName];
 			}

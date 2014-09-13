@@ -84,6 +84,7 @@ namespace NodeCanvasEditor{
 			current = this;
 			title = "NodeCanvas";
 			guiSkin = EditorGUIUtility.isProSkin? (GUISkin)Resources.Load("NodeCanvasSkin") : (GUISkin)Resources.Load("NodeCanvasSkinLight");
+			wantsMouseMove = true;
 			Repaint();
 		}
 
@@ -93,10 +94,16 @@ namespace NodeCanvasEditor{
 
 		void OnGUI(){
 
+			GUI.color = Color.white;
+			GUI.backgroundColor = Color.white;
+
 			if (EditorApplication.isCompiling){
 				ShowNotification(new GUIContent("Compiling Please Wait..."));
 				return;			
 			}
+
+			var e = Event.current;
+			GUI.skin = guiSkin;
 
 			if (targetOwner != null)
 				rootGraph = targetOwner.behaviour;
@@ -109,12 +116,10 @@ namespace NodeCanvasEditor{
 			currentGraph = GetCurrentGraph(rootGraph);
 
 	        if (PrefabUtility.GetPrefabType(currentGraph) == PrefabType.Prefab){
-	            ShowNotification(new GUIContent("Editing is not allowed when prefab asset is selected for safety. Please place the prefab in a scene, edit and apply it"));
+	            ShowNotification(new GUIContent("Editing is not allowed when prefab asset is selected for safety. Please place the prefab in the scene, edit and apply it"));
 	            return;
 	        }
 
-			GUI.skin = guiSkin;
-			var e = Event.current;
 
 			if (mouseOverWindow == this && (e.isMouse || e.isKey) )
 				repaintCounter += 2;
@@ -122,6 +127,7 @@ namespace NodeCanvasEditor{
 			if (e.type == EventType.ValidateCommand && e.commandName == "UndoRedoPerformed"){
                 GUIUtility.hotControl = 0;
                 GUIUtility.keyboardControl = 0;
+                e.Use();
 				return;
 			}
 
@@ -147,26 +153,52 @@ namespace NodeCanvasEditor{
 			canvas.width = canvasLimits.width;
 			canvas.height = canvasLimits.height;
 
-			GUI.Box(actualCanvas, "NodeCanvas v1.5.3", "canvasBG");
+			GUI.Box(actualCanvas, "NodeCanvas v1.5.8", "canvasBG");
 			DrawGrid();
 			
+			///Windows...
 			//Begin windows and ScrollView for the nodes.
 			scrollPos = GUI.BeginScrollView (actualCanvas, scrollPos, canvas);
-
 			BeginWindows();
 			currentGraph.ShowNodesGUI(new Rect(scrollPos.x, scrollPos.y, actualCanvas.width, actualCanvas.height));
 			EndWindows();
 			GUI.EndScrollView();
-			//End windows and scrollview for the nodes.
+			//
 
-			//Hierarchy
+			//Hierarchy...
 			GUILayout.BeginArea(new Rect(20, topMargin + 5, Screen.width, Screen.height));
 			GetDrawHierarchy(rootGraph);
 			GUILayout.EndArea();
 			//
 
+			//Graph controls...
 			currentGraph.ShowGraphControls();
 
+			DoMultiSelection();
+
+			if (repaintCounter > 0 || currentGraph.isRunning){
+				repaintCounter = Mathf.Max (repaintCounter -1, 0);
+				Repaint();
+			}
+
+			if (GUI.changed){
+				foreach (Node node in currentGraph.allNodes){
+					node.nodeRect.width = Node.minSize.x;
+					node.nodeRect.height = Node.minSize.y;
+				}
+				Repaint();
+			}
+
+			GUI.Box(actualCanvas,"", "canvasBorders");
+			GUI.skin = null;
+			GUI.color = Color.white;
+			GUI.backgroundColor = Color.white;
+		}
+
+
+		//...
+		void DoMultiSelection(){
+			var e = Event.current;
 			if (Graph.allowClick && e.button == 0 && e.type == EventType.MouseDown && !e.alt && !e.shift){
 				selectionStartPos = e.mousePosition;
 				isMultiSelecting = true;
@@ -206,21 +238,11 @@ namespace NodeCanvasEditor{
 				Graph.multiSelection = overAnyNode? new List<Object>() : overNodes;
 				isMultiSelecting = false;
 			}
-
-			if (repaintCounter > 0 || currentGraph.isRunning){
-				repaintCounter = Mathf.Max (repaintCounter -1, 0);
-				Repaint();
-			}
-
-			GUI.Box(actualCanvas,"", "canvasBorders");
-			GUI.skin = null;
-			GUI.color = Color.white;
-			GUI.backgroundColor = Color.white;
 		}
 
 		//rect b marginaly contained inside rect a?
 		bool RectContainsRect(Rect a, Rect b){
-			return a.Contains(new Vector2(b.x, b.y)) || a.Contains(new Vector2(b.xMax, b.yMax));
+			return b.xMin <= a.xMax && b.xMax >= a.xMin && b.yMin <= a.yMax && b.yMax >= a.yMin;
 		}
 
 		//Draw a simple grid
@@ -258,7 +280,7 @@ namespace NodeCanvasEditor{
 				return;
 
 			var agentInfo = root.agent != null? root.agent.gameObject.name : "No Agent";
-			var bbInfo = root.blackboard? root.blackboard.blackboardName : "No Blackboard";
+			var bbInfo = root.blackboard? root.blackboard.name : "No Blackboard";
 
 			GUI.color = new Color(1f,1f,1f,0.5f);
 			GUILayout.BeginVertical();
@@ -266,19 +288,19 @@ namespace NodeCanvasEditor{
 
 				if (root.agent == null && root.blackboard == null){
 
-					GUILayout.Label("<b><size=22>" + root.graphName + "</size></b>");	
+					GUILayout.Label("<b><size=22>" + root.name + "</size></b>");	
 		
 				} else {
 
-					GUILayout.Label("<b><size=22>" + root.graphName + "</size></b>" + "\n<size=10>" + agentInfo + " | " + bbInfo + "</size>");
+					GUILayout.Label("<b><size=22>" + root.name + "</size></b>" + "\n<size=10>" + agentInfo + " | " + bbInfo + "</size>");
 				}
 
 			} else {
 
 				GUILayout.BeginHorizontal();
-				if (GUILayout.Button("^ " + root.graphName, new GUIStyle("button"))){
+				if (GUILayout.Button("^ " + root.name, new GUIStyle("button"))){
 					root.nestedGraphView = null;
-					return;
+					Event.current.Use();
 				}
 
 				GUILayout.FlexibleSpace();
@@ -292,7 +314,7 @@ namespace NodeCanvasEditor{
 			GUI.color = Color.white;
 		}
 
-		//Snap all nodes
+		//Snap all nodes (this is not what is done while dragging a node)
 		void SnapNodes(){
 
 			if (!NCPrefs.doSnap)

@@ -7,11 +7,10 @@ namespace NodeCanvas.BehaviourTrees{
 	[Name("Condition")]
 	[Description("Check a condition and return Success or Failure")]
 	[Icon("Condition")]
-	public class BTCondition : BTNodeBase, ITaskAssignable{
+	public class BTCondition : BTNodeBase, ITaskAssignable<ConditionTask>{
 
 		[SerializeField]
-		private ConditionTask _condition;
-
+		private Object _condition;
 		[SerializeField]
 		private BTCondition _referencedNode;
 
@@ -19,23 +18,25 @@ namespace NodeCanvas.BehaviourTrees{
 			get {return condition;}
 			set {condition = (ConditionTask)value;}
 		}
-/*
-		public override int maxOutConnections{
-			get {return 1;}
+
+		public Object serializedTask{
+			get {return _condition;}
 		}
-*/
+
 		private ConditionTask condition{
 			get
 			{
 				if (referencedNode != null)
 					return referencedNode.condition;
-				return _condition;
+				return _condition as ConditionTask;
 			}
 			set
 			{
-				_condition = value;
-				if (_condition != null)
-					_condition.SetOwnerSystem(graph);
+				if (referencedNode != null) referencedNode.condition = value;
+				else _condition = value;
+
+				if (value != null)
+					value.SetOwnerSystem(graph);
 			}
 		}
 
@@ -50,14 +51,8 @@ namespace NodeCanvas.BehaviourTrees{
 
 		protected override Status OnExecute(Component agent, Blackboard blackboard){
 
-			if (condition){
-				if (outConnections.Count == 0)
-					return condition.CheckCondition(agent, blackboard)? Status.Success: Status.Failure;
-				if (condition.CheckCondition(agent, blackboard))
-					return outConnections[0].Execute(agent, blackboard);
-				outConnections[0].ResetConnection();
-			}
-
+			if (condition)
+				return condition.CheckCondition(agent, blackboard)? Status.Success: Status.Failure;
 			return Status.Failure;
 		}
 
@@ -80,18 +75,6 @@ namespace NodeCanvas.BehaviourTrees{
 
 				if (GUILayout.Button("Break Reference"))
 					BreakReference();
-
-				if (condition != null){
-					GUILayout.Label("<b>" + condition.taskName + "</b>");
-					condition.ShowInspectorGUI();
-				}
-				return;
-			}
-
-			if (!condition){
-				EditorUtils.TaskSelectionButton(gameObject, typeof(ConditionTask), delegate(Task c){condition = (ConditionTask)c;});
-			} else {
-				EditorUtils.TaskTitlebar(condition);
 			}
 		}
 
@@ -100,7 +83,7 @@ namespace NodeCanvas.BehaviourTrees{
 		}
 		
 		private void DuplicateReference(){
-			var newNode = graph.AddNewNode(typeof(BTCondition)) as BTCondition;
+			var newNode = graph.AddNode(typeof(BTCondition)) as BTCondition;
 			newNode.nodeRect.center = this.nodeRect.center + new Vector2(50, 50);
 			newNode.referencedNode = referencedNode != null? referencedNode : this;
 		}
@@ -111,7 +94,7 @@ namespace NodeCanvas.BehaviourTrees{
 				return;
 
 			if (referencedNode.condition != null)
-				condition = (ConditionTask)referencedNode.condition.CopyTo(this.gameObject);
+				_condition = (ConditionTask)referencedNode.condition.CopyTo(this.gameObject);
 
 			referencedNode = null;
 		}

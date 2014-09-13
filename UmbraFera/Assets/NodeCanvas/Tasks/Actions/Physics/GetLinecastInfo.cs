@@ -34,5 +34,10 @@ namespace NodeCanvas.Actions{
 
 			EndAction(false);
 		}
+
+		protected override void OnGizmosSelected(){
+			if (agent && target.value)
+				Gizmos.DrawLine(agent.transform.position, target.value.transform.position);
+		}
 	}
 }

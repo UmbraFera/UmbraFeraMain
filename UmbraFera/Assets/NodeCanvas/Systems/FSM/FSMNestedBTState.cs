@@ -11,7 +11,7 @@ namespace NodeCanvas.StateMachines{
 	[AddComponentMenu("")]
 	[Name("BehaviourTree")]
 	[Category("Nested")]
-	[Description("Execute a Behaviour Tree OnEnter. OnExit that Behavior Tree will be stoped. You can optionaly specify a Success Event and a Failure Event which will be sent when the BT's root node status returns either of the two. If so, use alongside with a CheckEvent on Transition.")]
+	[Description("Execute a Behaviour Tree OnEnter. OnExit that Behavior Tree will be stoped. You can optionaly specify a Success Event and a Failure Event which will be sent when the BT's root node status returns either of the two. If so, use alongside with a CheckEvent on a transition.")]
 	public class FSMNestedBTState : FSMState, INestedNode{
 
 		private enum ExecutionMode {RunOnce, RunForever}
@@ -40,7 +40,7 @@ namespace NodeCanvas.StateMachines{
 			set {nestedBT = (BehaviourTree)value;}
 		}
 
-		protected override void OnAwake(){
+		protected override void Init(){
 			CheckInstance();
 		}
 
@@ -77,7 +77,7 @@ namespace NodeCanvas.StateMachines{
 		}
 
 		protected override void Pause(){
-			if (nestedBT)
+			if (nestedBT && nestedBT.isRunning)
 				nestedBT.PauseGraph();
 		}
 
@@ -132,7 +132,7 @@ namespace NodeCanvas.StateMachines{
 			GUILayout.EndVertical();
 			GUI.color = Color.white;
 
-			nestedBT.graphName = nodeName;
+			nestedBT.name = nodeName;
 		}
 
 		#endif

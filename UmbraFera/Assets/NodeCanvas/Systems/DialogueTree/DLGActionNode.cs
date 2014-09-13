@@ -1,18 +1,14 @@
-﻿#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 namespace NodeCanvas.DialogueTrees{
 
 	[AddComponentMenu("")]
 	[Name("Action")]
 	[Description("Execute an Action Task for the Dialogue Actor selected. The Blackboard will be taken from the selected Actor.")]
-	public class DLGActionNode : DLGNodeBase, ITaskAssignable{
+	public class DLGActionNode : DLGNodeBase, ITaskAssignable<ActionTask>{
 
 		[SerializeField]
-		private ActionTask _action;
+		private Object _action;
 
 		[HideInInspector]
 		public Task task{
@@ -20,13 +16,17 @@ namespace NodeCanvas.DialogueTrees{
 			set {action = (ActionTask)value;}
 		}
 
-		private ActionTask action{
+		public Object serializedTask{
 			get {return _action;}
+		}
+
+		private ActionTask action{
+			get {return _action as ActionTask;}
 			set
 			{
 				_action = value;
-				if (_action != null)
-					_action.SetOwnerSystem(this);
+				if (value != null)
+					value.SetOwnerSystem(this);
 			}
 		}
 
@@ -73,23 +73,5 @@ namespace NodeCanvas.DialogueTrees{
 			if (action)
 				action.PauseAction();
 		}
-
-		////////////////////////////////////////
-		///////////GUI AND EDITOR STUFF/////////
-		////////////////////////////////////////
-		#if UNITY_EDITOR
-		
-		protected override void OnNodeInspectorGUI(){
-			
-			base.OnNodeInspectorGUI();
-
-			if (action == null){
-				EditorUtils.TaskSelectionButton(gameObject, typeof(ActionTask), delegate(Task a){action = (ActionTask)a;} );
-			} else {
-				EditorUtils.TaskTitlebar(action);
-			}
-		}
-
-		#endif
 	}
 }

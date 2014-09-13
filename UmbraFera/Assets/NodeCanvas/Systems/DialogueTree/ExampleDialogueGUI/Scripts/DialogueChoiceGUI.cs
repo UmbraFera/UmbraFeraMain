@@ -51,14 +51,14 @@ public class DialogueChoiceGUI : MonoBehaviour{
 
 		//Calculate the y size needed
 		float neededHeight= timer > 0? 20 : 0;
-		foreach (KeyValuePair <Statement, int> pair in currentOptions.finalOptions)
+		foreach (KeyValuePair <Statement, int> pair in currentOptions.options)
 			neededHeight += new GUIStyle("box").CalcSize(new GUIContent(pair.Key.text)).y;
 
 		//show the choices which are within a Dictionary of Statement and the int whic is the Index we need to 
 		//callback when an option is selected
 		Rect optionsRect= new Rect(10, Screen.height - neededHeight - 10, Screen.width - 20, neededHeight);
 		GUILayout.BeginArea(optionsRect);
-		foreach (KeyValuePair<Statement, int> option in currentOptions.finalOptions){
+		foreach (KeyValuePair<Statement, int> option in currentOptions.options){
 
 			//When a choice is selected we need to Callback with the index of the statement choice selected
 			if (GUILayout.Button(option.Key.text, new GUIStyle("box"), GUILayout.ExpandWidth(true))){
@@ -82,7 +82,6 @@ public class DialogueChoiceGUI : MonoBehaviour{
 		GUILayout.EndArea();
 	}
 
-	//not private for never used warning message since this is started with string
 	//Countdown for the available time. Picking a choice is done by the graph when it ends. All we need to do is to stop
 	//showing the UI
 	IEnumerator GUICountDown(){

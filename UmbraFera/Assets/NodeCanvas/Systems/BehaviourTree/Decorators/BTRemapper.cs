@@ -61,8 +61,6 @@ namespace NodeCanvas.BehaviourTrees{
 
 			if ((int)failureRemap != (int)Status.Failure)
 				GUILayout.Label("Failure = " + failureRemap);
-
-			GUILayout.Label("", GUILayout.Height(1));
 		}
 
 		#endif

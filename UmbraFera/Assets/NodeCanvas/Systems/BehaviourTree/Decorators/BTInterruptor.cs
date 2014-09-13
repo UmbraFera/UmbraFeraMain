@@ -7,25 +7,29 @@ namespace NodeCanvas.BehaviourTrees{
 	[AddComponentMenu("")]
 	[Name("Interrupt")]
 	[Category("Decorators")]
-	[Description("Interrupt the child node and return Failure if the condition is or becomes true while running. Otherwise return whatever the child returns")]
+	[Description("Interrupt the child node and return Failure if the condition is or becomes true while running. Otherwise execute and return the child Status")]
 	[Icon("Interruptor")]
 	public class BTInterruptor : BTDecorator, ITaskAssignable{
 
 		[SerializeField]
-		private ConditionTask _condition;
+		private Object _condition;
 
 		public Task task{
 			get {return condition;}
 			set {condition = (ConditionTask)value;}
 		}
 
-		private ConditionTask condition{
+		public Object serializedTask{
 			get {return _condition;}
+		}
+
+		private ConditionTask condition{
+			get {return _condition as ConditionTask;}
 			set
 			{
 				_condition = value;
-				if (_condition != null)
-					_condition.SetOwnerSystem(graph);
+				if (value != null)
+					value.SetOwnerSystem(graph);
 			}
 		}
 
@@ -53,7 +57,7 @@ namespace NodeCanvas.BehaviourTrees{
 			if (condition == null){
 				EditorUtils.TaskSelectionButton(gameObject, typeof(ConditionTask), delegate(Task c){condition = (ConditionTask)c;});
 			} else {
-				EditorUtils.TaskTitlebar(condition);
+				condition.ShowInspectorGUI();
 			}
 		}
 

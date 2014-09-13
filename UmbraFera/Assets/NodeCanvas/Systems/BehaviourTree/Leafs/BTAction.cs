@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Reflection;
 
 namespace NodeCanvas.BehaviourTrees{
 
@@ -8,10 +9,10 @@ namespace NodeCanvas.BehaviourTrees{
 	[Description("Executes an action and returns Success or Failure. Returns Running until the action finish")]
 	[Icon("Action")]
 	///Executes an Action Task assigned and returns Success or Failure based on that Action Task
-	public class BTAction : BTNodeBase, ITaskAssignable{
+	public class BTAction : BTNodeBase, ITaskAssignable<ActionTask>{
 
 		[SerializeField]
-		private ActionTask _action;
+		private Object _action;
 		[SerializeField]
 		private BTAction _referencedNode;
 
@@ -20,18 +21,24 @@ namespace NodeCanvas.BehaviourTrees{
 			set {action = (ActionTask)value;}
 		}
 
+		public Object serializedTask{
+			get {return _action;}
+		}
+
 		private ActionTask action{
 			get
 			{
 				if (referencedNode != null)
 					return referencedNode.action;
-				return _action;
+				return _action as ActionTask;
 			}
 			set
 			{
-				_action = value;
-				if (_action != null)
-					_action.SetOwnerSystem(graph);
+				if (referencedNode != null) referencedNode.action = value;
+				else _action = value;
+
+				if (value != null)
+					value.SetOwnerSystem(graph);
 			}
 		}
 
@@ -49,7 +56,6 @@ namespace NodeCanvas.BehaviourTrees{
 			if (action == null)
 				return Status.Success;
 
-			//need to check action.isPaused here. Special case
 			if (status == Status.Resting || action.isPaused){
 				status = Status.Running;
 				action.ExecuteAction(agent, blackboard, OnActionEnd);
@@ -60,7 +66,6 @@ namespace NodeCanvas.BehaviourTrees{
 
 		//Callback from the "ActionTask".
 		private void OnActionEnd(System.ValueType didSucceed){
-
 			status = (bool)didSucceed? Status.Success : Status.Failure;
 		}
 
@@ -94,18 +99,6 @@ namespace NodeCanvas.BehaviourTrees{
 
 				if (GUILayout.Button("Break Reference"))
 					BreakReference();
-
-				if (action != null){
-					GUILayout.Label("<b>" + action.taskName + "</b>");
-					action.ShowInspectorGUI();
-				}
-				return;
-			}
-
-			if (action == null){
-				EditorUtils.TaskSelectionButton(gameObject, typeof(ActionTask), delegate(Task a){action = (ActionTask)a;});
-			} else {
-				EditorUtils.TaskTitlebar(action);
 			}
 		}
 
@@ -114,7 +107,7 @@ namespace NodeCanvas.BehaviourTrees{
 		}
 		
 		private void DuplicateReference(){
-			var newNode = graph.AddNewNode(typeof(BTAction)) as BTAction;
+			var newNode = graph.AddNode(typeof(BTAction)) as BTAction;
 			newNode.nodeRect.center = this.nodeRect.center + new Vector2(50, 50);
 			newNode.referencedNode = referencedNode != null? referencedNode : this;
 		}
@@ -126,7 +119,7 @@ namespace NodeCanvas.BehaviourTrees{
 				return;
 
 			if (referencedNode.action != null)
-				action = (ActionTask)referencedNode.action.CopyTo(this.gameObject);
+				_action = (ActionTask)referencedNode.action.CopyTo(this.gameObject);
 
 			referencedNode = null;
 		}

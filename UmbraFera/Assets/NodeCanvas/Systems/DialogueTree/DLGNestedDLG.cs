@@ -75,7 +75,7 @@ namespace NodeCanvas.DialogueTrees{
 
 			if (nestedDLG){
 
-				GUILayout.Label(nestedDLG.graphName);
+				GUILayout.Label(nestedDLG.name);
 			
 			} else {
 
@@ -96,7 +96,7 @@ namespace NodeCanvas.DialogueTrees{
 			}
 
 			if (nestedDLG != null)
-				nestedDLG.graphName = EditorGUILayout.TextField("Name", nestedDLG.graphName);
+				nestedDLG.name = EditorGUILayout.TextField("Name", nestedDLG.name);
 		}
 
 		#endif

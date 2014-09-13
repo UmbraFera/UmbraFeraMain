@@ -38,16 +38,13 @@ namespace NodeCanvas.BehaviourTrees{
 		/////////
 		/////////
 
-		protected override void OnAwake(){
-			CheckInstance();
-		}
-
 		protected override Status OnExecute(Component agent, Blackboard blackboard){
 
 			CheckInstance();
 
 			if (nestedTree && nestedTree.primeNode)
-				return nestedTree.primeNode.Execute(agent, blackboard);
+				return nestedTree.Tick(agent, blackboard);
+				//return nestedTree.primeNode.Execute(agent, blackboard);
 
 			return Status.Success;
 		}
@@ -60,6 +57,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 		public override void OnGraphStarted(){
 			if (nestedTree){
+				CheckInstance();
 				foreach(Node node in nestedTree.allNodes)
 					node.OnGraphStarted();				
 			}
@@ -97,7 +95,7 @@ namespace NodeCanvas.BehaviourTrees{
 		    
 		    if (nestedTree){
 
-		    	GUILayout.Label("'" + nestedTree.graphName + "'");
+		    	GUILayout.Label("'" + nestedTree.name + "'");
 
 			} else {
 				
@@ -114,8 +112,10 @@ namespace NodeCanvas.BehaviourTrees{
 		    	nestedTree = null;
 		    }
 
-		    if (nestedTree != null)
-		    	nestedTree.graphName = UnityEditor.EditorGUILayout.TextField("Name", nestedTree.graphName);
+		    if (nestedTree != null){
+		    	nestedTree.name = UnityEditor.EditorGUILayout.TextField("Name", nestedTree.name);
+		    	nestedTree.ShowDefinedBBVariablesGUI();
+		    }
 		}
 
 		#endif

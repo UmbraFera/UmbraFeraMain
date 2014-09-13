@@ -154,6 +154,16 @@ namespace NodeCanvas {
 
 		private static float defaultLineSize = 3;
 
+		public enum TipConnectionStyle{
+			None,
+			Circle,
+			Arrow
+		}
+
+		virtual protected TipConnectionStyle tipConnectionStyle{
+			get {return TipConnectionStyle.Circle;}
+		}
+
 
 		//Relink connection to another target node
 		public void Relink(Node newNode){
@@ -200,23 +210,39 @@ namespace NodeCanvas {
 			if (lineTo.x <= targetNode.nodeRect.x){
 				lineToTangent = new Vector3(-tangentX, 0, 0);
 				hor--;
-				GUI.Box(arrowRect, "", "circle");
+				if (tipConnectionStyle == TipConnectionStyle.Circle)
+					GUI.Box(arrowRect, "", "circle");
+				else
+				if (tipConnectionStyle == TipConnectionStyle.Arrow)
+					GUI.Box(arrowRect, "", "arrowRight");
 			}
 
 			if (lineTo.x >= targetNode.nodeRect.xMax){
 				lineToTangent = new Vector3(tangentX, 0, 0);
 				hor++;
-				GUI.Box(arrowRect, "", "circle");
+				if (tipConnectionStyle == TipConnectionStyle.Circle)
+					GUI.Box(arrowRect, "", "circle");
+				else
+				if (tipConnectionStyle == TipConnectionStyle.Arrow)
+					GUI.Box(arrowRect, "", "arrowLeft");
 			}
 
 			if (lineTo.y <= targetNode.nodeRect.y){
 				lineToTangent = new Vector3(0, -tangentY, 0);
-				GUI.Box(arrowRect, "", "circle");
+				if (tipConnectionStyle == TipConnectionStyle.Circle)
+					GUI.Box(arrowRect, "", "circle");
+				else
+				if (tipConnectionStyle == TipConnectionStyle.Arrow)
+					GUI.Box(arrowRect, "", "arrowBottom");
 			}
 
 			if (lineTo.y >= targetNode.nodeRect.yMax){
 				lineToTangent = new Vector3(0, tangentY, 0);
-				GUI.Box(arrowRect, "", "circle");
+				if (tipConnectionStyle == TipConnectionStyle.Circle)
+					GUI.Box(arrowRect, "", "circle");
+				else
+				if (tipConnectionStyle == TipConnectionStyle.Arrow)
+					GUI.Box(arrowRect, "", "arrowTop");
 			}
 
 			GUI.color = Color.white;

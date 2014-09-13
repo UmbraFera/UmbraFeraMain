@@ -10,18 +10,21 @@ namespace NodeCanvas.Actions{
 
 	[Category("✫ Script Control")]
 	[Description("Set a variable on a script")]
-	[AgentType(typeof(Transform))]
 	public class SetField : ActionTask {
 
 		public BBVariableSet setValue = new BBVariableSet();
 
 		[SerializeField]
-		private string fieldName;
+		private string scriptName = typeof(Component).AssemblyQualifiedName;
 		[SerializeField]
-		private string scriptName;
+		private string fieldName;
 
-		private Component script;
 		private FieldInfo field;
+
+		public override System.Type agentType{
+			get {return System.Type.GetType(scriptName);}
+		}
+
 
 		protected override string info{
 			get
@@ -34,59 +37,76 @@ namespace NodeCanvas.Actions{
 		}
 
 		protected override string OnInit(){
-			script = agent.GetComponent(scriptName);
-			if (script == null)
-				return "Missing Component";
-			field = script.GetType().NCGetField(fieldName);
+			field = agent.GetType().NCGetField(fieldName);
 			if (field == null)
 				return "Missing Field Info";
 			return null;
 		}
 
 		protected override void OnExecute(){
-
-			field.SetValue(script, setValue.objectValue);
+			field.SetValue(agent, setValue.objectValue);
 			EndAction(true);
 		}
+
 
 		////////////////////////////////////////
 		///////////GUI AND EDITOR STUFF/////////
 		////////////////////////////////////////
 		#if UNITY_EDITOR
+
+
+		/////UPDATING
+		protected override void OnEditorValidate(){
+			if (agentType == null)
+				scriptName = EditorUtils.GetType(scriptName, typeof(Component)).AssemblyQualifiedName;
+		}
+		///////	
 		
 		protected override void OnTaskInspectorGUI(){
 
-			if (agent == null){
-				EditorGUILayout.HelpBox("This Action needs the Agent to be known. Currently the Agent is unknown.\nConsider overriding the Agent or using SendMessage instead.", MessageType.Error);
-				return;
+			EditorGUILayout.HelpBox(agent == null? "Agent is unknown.\nYou can select a type and a field" : "Agent is known.\nField selection will be done from existing components", MessageType.Info);
+
+			if (!Application.isPlaying && agent == null && GUILayout.Button("Alter Type")){
+				System.Action<System.Type> TypeSelected = delegate(System.Type t){
+					var newName = t.AssemblyQualifiedName;
+					if (scriptName != newName){
+						scriptName = newName;
+						fieldName = null;
+					}
+				};
+
+				EditorUtils.ShowConfiguredTypeSelectionMenu(typeof(Component), TypeSelected);
 			}
 
-			if (agent.GetComponent(scriptName) == null){
-				scriptName = null;
-				fieldName = null;
-				setValue.selectedType = null;
-			}
 
-			if (GUILayout.Button("Select Field")){
-				EditorUtils.ShowFieldSelectionMenu(agent.gameObject, setValue.availableTypes, delegate(FieldInfo field){
-					scriptName = field.ReflectedType.Name;
+			if (!Application.isPlaying && GUILayout.Button("Select Field")){
+
+				System.Action<FieldInfo> FieldSelected = delegate(FieldInfo field){
+					scriptName = field.DeclaringType.AssemblyQualifiedName;
 					fieldName = field.Name;
 					setValue.selectedType = field.FieldType;
-					if (Application.isPlaying)
-						OnInit();
-				});
+				};
+
+				if (agent != null){
+					EditorUtils.ShowGameObjectFieldSelectionMenu(agent.gameObject, setValue.availableTypes, FieldSelected);
+				} else {
+					var menu = EditorUtils.GetFieldSelectionMenu(agentType, setValue.availableTypes, FieldSelected);
+					menu.ShowAsContext();
+					Event.current.Use();
+				}
 			}
+
 
 			if (!string.IsNullOrEmpty(fieldName)){
 				GUILayout.BeginVertical("box");
-				EditorGUILayout.LabelField("Selected Component", scriptName);
-				EditorGUILayout.LabelField("Selected Field", fieldName);
+				EditorGUILayout.LabelField("Type", agentType.Name);
+				EditorGUILayout.LabelField("Field", fieldName);
 				EditorGUILayout.LabelField("Field Type", EditorUtils.TypeName(setValue.selectedType) );
 				GUILayout.EndVertical();
-			}
 
-			if (setValue.selectedType != null)
-				EditorUtils.BBVariableField("Set Value", setValue.selectedBBVariable);
+				if (setValue.selectedType != null)
+					EditorUtils.BBVariableField("Set Value", setValue.selectedBBVariable);
+			}
 		}
 
 		#endif

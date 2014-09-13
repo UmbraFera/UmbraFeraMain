@@ -48,7 +48,6 @@ namespace NodeCanvas{
 		}
 	}	
 
-
 	///Makes the int field show as layerfield
 	[AttributeUsage(AttributeTargets.Field)]
 	public class LayerFieldAttribute : Attribute{
@@ -101,17 +100,5 @@ namespace NodeCanvas{
 		public RequiresComponentAttribute(System.Type type){
 			this.type = type;
 		}
-	}
-
-	///When auto editor layouting, starts a vertical box group
-	[AttributeUsage(AttributeTargets.Field)]
-	public class BeginGroupAttribute : Attribute{
-
-	}
-
-	///When auto editor layouting, ends a vertical box group
-	[AttributeUsage(AttributeTargets.Field)]
-	public class EndGroupAttribute : Attribute{
-
 	}
 }

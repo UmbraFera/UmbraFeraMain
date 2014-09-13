@@ -11,7 +11,7 @@ namespace NodeCanvas.Actions{
 		public BBGameObject saveAs = new BBGameObject(){blackboardOnly = true};
 
 		protected override string info{
-			get {return "Get Object " + gameObjectName + " as " + saveAs;}
+			get {return "Find Object " + gameObjectName + " as " + saveAs;}
 		}
 
 		protected override void OnExecute(){

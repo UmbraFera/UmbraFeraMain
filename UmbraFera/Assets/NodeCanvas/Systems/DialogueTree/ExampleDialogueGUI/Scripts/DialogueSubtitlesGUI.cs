@@ -86,7 +86,7 @@ public class DialogueSubtitlesGUI : MonoBehaviour{
 			newCenter.x = speechRect.center.x;
 			newCenter.y = speechRect.y - 24;
 			nameRect.center = newCenter;
-			GUI.Box(nameRect, talkingActor.actorName);
+			GUI.Box(nameRect, talkingActor.name);
 
 			if (talkingActor.portrait){
 				Rect portraitRect= new Rect(10, Screen.height - talkingActor.portrait.height - 70, talkingActor.portrait.width, talkingActor.portrait.height);

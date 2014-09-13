@@ -60,7 +60,7 @@ namespace NodeCanvas.StateMachines{
 			}
 
 			if (emptyFound)
-				UnityEditor.EditorGUILayout.HelpBox("This is not a state and as such it never finish and no OnFinish transitions are ever called. Add a condition in all transitions of this node", UnityEditor.MessageType.Warning);
+				UnityEditor.EditorGUILayout.HelpBox("This is not a state and as such it never finish and no OnFinish transitions are ever called.\nAdd a condition in all transitions of this node", UnityEditor.MessageType.Warning);
 		}
 
 		#endif

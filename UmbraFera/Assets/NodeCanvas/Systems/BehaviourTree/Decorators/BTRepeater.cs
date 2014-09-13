@@ -1,8 +1,4 @@
-﻿#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using NodeCanvas.Variables;
 
@@ -16,21 +12,19 @@ namespace NodeCanvas.BehaviourTrees{
 	public class BTRepeater : BTDecorator{
 
 		public enum RepeatTypes {
-
 			RepeatTimes,
 			RepeatUntil,
 			RepeatForever
 		}
 
 		public enum RepeatUntil {
-
 			Failure = 0,
 			Success = 1
 		}
 
 		public RepeatTypes repeatType= RepeatTypes.RepeatTimes;
 		public RepeatUntil repeatUntil= RepeatUntil.Success;
-		public BBFloat repeatTimes = new BBFloat{value = 1};
+		public BBInt repeatTimes = new BBInt{value = 1};
 
 		private int currentIteration = 1;
 
@@ -41,7 +35,10 @@ namespace NodeCanvas.BehaviourTrees{
 
 			status = decoratedConnection.Execute(agent, blackboard);
 
-			if (status == Status.Success || status == Status.Failure){
+			if (status == Status.Resting)
+				return Status.Running;
+
+			if (status != Status.Running){
 
 				if (repeatType == RepeatTypes.RepeatTimes){
 
@@ -95,15 +92,15 @@ namespace NodeCanvas.BehaviourTrees{
 
 		protected override void OnNodeInspectorGUI(){
 
-			repeatType = (RepeatTypes)EditorGUILayout.EnumPopup("Repeat Type", repeatType);
+			repeatType = (RepeatTypes)UnityEditor.EditorGUILayout.EnumPopup("Repeat Type", repeatType);
 
 			if (repeatType == RepeatTypes.RepeatTimes){
 
-				repeatTimes = (BBFloat)EditorUtils.BBVariableField("Repeat Times", repeatTimes);
+				repeatTimes = (BBInt)EditorUtils.BBVariableField("Repeat Times", repeatTimes);
 
 			} else if (repeatType == RepeatTypes.RepeatUntil){
 
-				repeatUntil = (RepeatUntil)EditorGUILayout.EnumPopup("Repeat Until", repeatUntil);
+				repeatUntil = (RepeatUntil)UnityEditor.EditorGUILayout.EnumPopup("Repeat Until", repeatUntil);
 			}
 		}
 

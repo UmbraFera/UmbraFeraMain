@@ -24,5 +24,8 @@ namespace NodeCanvas{
 	///Denotes that the node can be assigned a Task and it's workings are based on that task, either condition or action.
 	public interface ITaskAssignable{
 		Task task{get;set;}
+		Object serializedTask{get;}
 	}
+
+	public interface ITaskAssignable<T> : ITaskAssignable where T : Task{}
 }

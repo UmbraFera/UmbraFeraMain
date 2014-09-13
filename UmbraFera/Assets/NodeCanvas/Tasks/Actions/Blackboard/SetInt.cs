@@ -8,51 +8,17 @@ namespace NodeCanvas.Actions{
 	[Description("Set a blackboard float variable")]
 	public class SetInt : ActionTask{
 
-		public enum SetMode
-		{
-			SET,
-			ADD,
-			SUBTRACT,
-			MULTIPLY
-		}
-		public BBInt valueA = new BBInt{blackboardOnly = true};
-		public SetMode Operation = SetMode.SET;
+		[BlackboardOnly]
+		public BBInt valueA;
+		public OperationMethod Operation = OperationMethod.Set;
 		public BBInt valueB;
 
 		protected override string info{
-			get
-			{
-				if (Operation == SetMode.SET)
-					return "Set " + valueA + " = " + valueB;
-
-				if (Operation == SetMode.ADD)
-					return "Set " + valueA + " += " + valueB;
-				
-				if (Operation == SetMode.SUBTRACT)
-					return "Set " + valueA + " -= " + valueB;
-
-				if (Operation == SetMode.MULTIPLY)
-					return "Set " + valueA + " *= " + valueB;
-
-				return string.Empty;			
-			}
+			get	{return valueA + TaskTools.GetOperationString(Operation) + valueB;}
 		}
 
 		protected override void OnExecute(){
-
-			if (Operation == SetMode.SET){
-				valueA.value = valueB.value;
-			} else
-			if (Operation == SetMode.ADD){
-				valueA.value += valueB.value;
-			} else
-			if (Operation == SetMode.SUBTRACT){
-				valueA.value -= valueB.value;
-			} else
-			if (Operation == SetMode.MULTIPLY){
-				valueA.value *= valueB.value;
-			}
-
+			valueA.value = (int)TaskTools.Operate(valueA.value, valueB.value, Operation);
 			EndAction(true);
 		}
 	}

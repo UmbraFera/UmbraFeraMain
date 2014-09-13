@@ -13,7 +13,13 @@ namespace NodeCanvas.Variables{
 
 		public override object objectValue{
 			get {return value;}
-			set {this.value = value;}
+			set
+			{
+				if (this.value != value){
+					this.value = value;
+					OnValueChanged(value);
+				}
+			}
 		}
 	}
 }

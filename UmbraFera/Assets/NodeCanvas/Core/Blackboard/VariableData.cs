@@ -8,7 +8,7 @@ namespace NodeCanvas.Variables{
 	abstract public class VariableData : MonoBehaviour{
 
 		public string dataName;
-		public System.Action<string, object> onValueChagned;
+		public event System.Action<string, object> onValueChanged;
 
 		private System.Type _type;
 		private FieldInfo _valueField;
@@ -49,8 +49,8 @@ namespace NodeCanvas.Variables{
 		}
 
 		protected void OnValueChanged(object value){
-			if (onValueChagned != null)
-				onValueChagned(dataName, value);
+			if (onValueChanged != null)
+				onValueChanged(dataName, value);
 		}
 
 		//Used when saving to get the object information
@@ -72,34 +72,44 @@ namespace NodeCanvas.Variables{
 		//////////////////////////
 		#if UNITY_EDITOR
 
+		protected static GUILayoutOption[] layoutOptions = new GUILayoutOption[]{GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true)};
+
 		virtual public void ShowDataGUI(){
 
 			var field = this.GetType().GetField("value");
 			if (field == null){
-				GUILayout.Label("No public field named 'value' found");
+				GUILayout.Label("No public field 'value' found");
 				return;
 			}
 
 			if (varType == typeof(object)){
-				GUILayout.Label("(System.Object)", GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true));
+				GUILayout.Label("(System.Object)", layoutOptions);
 				return;
 			}
 
 			if (typeof(Object).IsAssignableFrom(varType)){
-
-				field.SetValue(this, (Object)UnityEditor.EditorGUILayout.ObjectField( (Object)field.GetValue(this), varType, true, GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true) ));
-
-			} else if (!varType.IsValueType){
-
-				var isList = typeof(IList).IsAssignableFrom(varType) && field.GetValue(this) != null && !varType.IsArray;
-				if (GUILayout.Button("(" + EditorUtils.TypeName(varType) + ")" + (isList? (field.GetValue(this) as IList).Count.ToString() : ""), GUILayout.MaxWidth(100), GUILayout.ExpandWidth(true)))
-					NodeCanvasEditor.PopObjectEditor.Show(field.GetValue(this), varType);
-			
-			} else {
-
-				//objectValue = EditorUtils.GenericField(null, objectValue, objectValue.GetType());
-				GUILayout.Label("Can't show");
+				objectValue = (Object)UnityEditor.EditorGUILayout.ObjectField((Object)objectValue, varType, true, layoutOptions);
+				return;
 			}
+
+			var value = field.GetValue(this);
+			var actualType = value != null? value.GetType() : varType;
+
+			if (actualType.IsAbstract){
+				GUILayout.Label( string.Format("({0})", EditorUtils.TypeName(actualType)), layoutOptions );
+				return;
+			}
+
+			if (!varType.IsValueType){
+	
+				var isList = typeof(IList).IsAssignableFrom(varType) && value != null && !varType.IsArray;
+				if (GUILayout.Button("(" + EditorUtils.TypeName(actualType) + ")" + (isList? (value as IList).Count.ToString() : ""), layoutOptions))
+					NodeCanvasEditor.PopObjectEditor.Show(value, actualType);
+				return;
+			}
+
+			//objectValue = EditorUtils.GenericField(null, objectValue, objectValue.GetType());
+			GUILayout.Label(string.Format("({0})", EditorUtils.TypeName(varType) ), layoutOptions);
 		}
 
 		#endif

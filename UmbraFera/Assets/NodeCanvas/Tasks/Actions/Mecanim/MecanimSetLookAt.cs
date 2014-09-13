@@ -3,7 +3,7 @@ using NodeCanvas.Variables;
 
 namespace NodeCanvas.Actions{
 
-	[Name("Set Mecanim Trigger")]
+	[Name("Set Mecanim Look At")]
 	[EventListener("OnAnimatorIK")]
 	public class MecanimSetLookAt : MecanimActions{
 

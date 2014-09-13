@@ -10,7 +10,7 @@ namespace NodeCanvas.BehaviourTrees{
 
 		public override Graph behaviour{
 			get { return BT;}
-			set { BT = (BehaviourTree)value;}
+			set { BT = (BehaviourTree)value; }
 		}
 		
 		public override System.Type graphType{
@@ -35,7 +35,7 @@ namespace NodeCanvas.BehaviourTrees{
 		}
 
 
-		///Tick the assigned Behaviour Tree for this owner and retruns it's root status. Same as BehaviourTree.Tick()
+		///Ticks the assigned Behaviour Tree for this owner agent and returns it's root status
 		public Status Tick(){
 			
 			if (BT == null){
@@ -43,13 +43,7 @@ namespace NodeCanvas.BehaviourTrees{
 				return Status.Resting;
 			}
 
-			BT.Tick(this, blackboard);
-			return BT.rootStatus;
-		}
-
-		[System.Obsolete("Use PauseGraph() instead")]
-		public void Pause(){
-			PauseGraph();
+			return BT.Tick(this, blackboard);
 		}
 	}
 }

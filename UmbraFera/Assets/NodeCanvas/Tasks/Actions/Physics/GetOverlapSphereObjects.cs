@@ -11,7 +11,7 @@ namespace NodeCanvas.Actions{
 	public class GetOverlapSphereObjects : ActionTask {
 
 		public LayerMask layerMask = -1;
-		public BBFloat radius;
+		public BBFloat radius = new BBFloat{value = 2f};
 		[BlackboardOnly]
 		public BBGameObjectList saveObjectsAs;
 
@@ -27,6 +27,13 @@ namespace NodeCanvas.Actions{
 			}
 
 			EndAction(true);
+		}
+
+		protected override void OnGizmosSelected(){
+			if (agent != null){
+				Gizmos.color = new Color(1,1,1,0.2f);
+				Gizmos.DrawSphere(agent.transform.position, radius.value);
+			}
 		}
 	}
 }

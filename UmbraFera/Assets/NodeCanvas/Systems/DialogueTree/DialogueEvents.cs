@@ -17,13 +17,13 @@ namespace NodeCanvas.DialogueTrees{
 	///Send along with a OnDialogueOptions event. Holds information of the options, time available as well as a callback to be called providing the selected option
 	public class DialogueOptionsInfo{
 
-		public Dictionary<Statement, int> finalOptions = new Dictionary<Statement, int>();
+		public Dictionary<Statement, int> options = new Dictionary<Statement, int>();
 		public float availableTime = 0;
 
 		public Action<int> SelectOption;
 
-		public DialogueOptionsInfo(Dictionary<Statement, int> finalOptions, float availableTime, Action<int> callback){
-			this.finalOptions = finalOptions;
+		public DialogueOptionsInfo(Dictionary<Statement, int> options, float availableTime, Action<int> callback){
+			this.options = options;
 			this.availableTime = availableTime;
 			this.SelectOption = callback;
 		}

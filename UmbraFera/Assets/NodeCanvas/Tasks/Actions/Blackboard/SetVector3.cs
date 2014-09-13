@@ -7,16 +7,17 @@ namespace NodeCanvas.Actions{
 	[Description("Set a blackboard Vector3 variable")]
 	public class SetVector3 : ActionTask {
 
-		public BBVector valueA = new BBVector{blackboardOnly = true};
+		[BlackboardOnly]
+		public BBVector valueA;
+		public OperationMethod operation;
 		public BBVector valueB;
 
 		protected override string info{
-			get {return "Set " + valueA + " = " + valueB;}
+			get {return valueA + TaskTools.GetOperationString(operation) + valueB;}
 		}
 
 		protected override void OnExecute(){
-
-			valueA.value = valueB.value;
+			valueA.value = (Vector3)TaskTools.Operate(valueA.value, valueB.value, operation);
 			EndAction();
 		}
 	}
